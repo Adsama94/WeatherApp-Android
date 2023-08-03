@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="persistedWeatherModel"
+            type="com.adsama.database.PersistedWeatherModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/tv_city_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="20dp"
+            android:fontFamily="@font/new_york_regular"
+            android:text="@{persistedWeatherModel.name}"
+            android:textColor="@color/black"
+            android:textSize="24sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Ottawa" />
+
+        <TextView
+            android:id="@+id/tv_state_country_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/avenir_ltsd_book"
+            android:text="@{persistedWeatherModel.region + `, ` + persistedWeatherModel.country}"
+            android:textSize="14sp"
+            app:layout_constraintStart_toStartOf="@id/tv_city_name"
+            app:layout_constraintTop_toBottomOf="@id/tv_city_name"
+            tools:text="Ontario, Canada" />
+
+        <TextView
+            android:id="@+id/tv_search_temp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="4dp"
+            android:fontFamily="@font/avenir_ltsd_book"
+            android:textColor="@color/black"
+            android:textSize="24sp"
+            app:layout_constraintEnd_toStartOf="@id/iv_search_weather"
+            app:layout_constraintTop_toTopOf="parent"
+            app:tempInCelsius="@{persistedWeatherModel.temp_c}"
+            tools:text="19°c" />
+
+        <ImageView
+            android:id="@+id/iv_search_weather"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginEnd="16dp"
+            app:iconUrl="@{persistedWeatherModel.icon}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:ignore="ContentDescription" />
+
+        <TextView
+            android:id="@+id/tv_weather_search_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/avenir_ltsd_book"
+            android:text="@{persistedWeatherModel.date}"
+            android:textColor="#A1A1A1"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toBottomOf="@id/tv_state_country_name"
+            app:layout_constraintEnd_toEndOf="@id/iv_search_weather"
+            app:layout_constraintTop_toTopOf="@id/tv_state_country_name"
+            tools:text="2:00 am" />
+
+        <View
+            android:id="@+id/v_separator"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="16dp"
+            android:background="#EFEFEF"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_state_country_name" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

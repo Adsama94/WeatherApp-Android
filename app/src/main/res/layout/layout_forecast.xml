@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="26dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/grey_rounded_corners_bg"
+        app:layout_constraintTop_toBottomOf="@id/cl_hourly">
+
+        <ImageView
+            android:id="@+id/iv_five_day_forecast"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="10dp"
+            android:src="@drawable/calendar_forecast"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tv_five_day_forecast"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:fontFamily="@font/avenir_ltsd_black"
+            android:textColor="#364A7D"
+            android:textSize="14sp"
+            app:layout_constraintBottom_toBottomOf="@id/iv_five_day_forecast"
+            app:layout_constraintStart_toEndOf="@id/iv_five_day_forecast"
+            app:layout_constraintTop_toTopOf="@id/iv_five_day_forecast"
+            android:text="@string/five_day_forecast" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_five_day_forecast"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_five_day_forecast"
+            tools:itemCount="5"
+            tools:listitem="@layout/item_forecast" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+</layout>

@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <import type="android.view.View" />
+
+        <variable
+            name="viewModel"
+            type="com.adsama.weatherapp.ui.details.WeatherDetailViewModel" />
+    </data>
+
+    <ScrollView
+        android:id="@+id/sv_detail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="10dp">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/cl_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/iv_detail_back"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="36dp"
+                android:src="@drawable/arrow_back"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <ImageView
+                android:id="@+id/iv_add"
+                android:layout_width="18dp"
+                android:layout_height="20dp"
+                android:layout_marginTop="36dp"
+                android:layout_marginEnd="4dp"
+                android:onClick="@{() -> viewModel.saveLocationData()}"
+                android:src="@drawable/add"
+                android:visibility="@{viewModel.isPersisted ? View.GONE : View.VISIBLE}"
+                app:layout_constraintEnd_toStartOf="@id/tv_add"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/iv_delete"
+                android:layout_width="18dp"
+                android:layout_height="20dp"
+                android:layout_marginTop="36dp"
+                android:layout_marginEnd="4dp"
+                android:src="@drawable/delete"
+                android:onClick="@{() -> viewModel.removeLocationFromSaved()}"
+                android:visibility="@{viewModel.isPersisted ? View.VISIBLE : View.GONE}"
+                app:layout_constraintEnd_toStartOf="@id/tv_delete"
+                app:layout_constraintTop_toTopOf="parent"
+                tools:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_add"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:gravity="center"
+                android:onClick="@{() -> viewModel.saveLocationData()}"
+                android:text="@string/add"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                android:visibility="@{viewModel.isPersisted ? View.GONE : View.VISIBLE}"
+                app:layout_constraintBottom_toBottomOf="@id/iv_add"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/iv_add"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/tv_delete"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:gravity="center"
+                android:onClick="@{() -> viewModel.removeLocationFromSaved()}"
+                android:text="@string/remove"
+                android:textColor="#E34C4C"
+                android:textSize="16sp"
+                android:visibility="@{viewModel.isPersisted ? View.VISIBLE : View.GONE}"
+                app:layout_constraintBottom_toBottomOf="@id/iv_delete"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/iv_delete"
+                tools:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tv_detail_city"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="20dp"
+                android:fontFamily="@font/avenir_ltsd_black"
+                android:text="@{viewModel.forecastResponse.location.name}"
+                android:textColor="@color/black"
+                android:textSize="36sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/iv_detail_back"
+                tools:text="Ottawa" />
+
+            <TextView
+                android:id="@+id/tv_detail_state_country"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:text="@{viewModel.forecastResponse.location.region + `, ` + viewModel.forecastResponse.location.country}"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_detail_city"
+                tools:text="Ontario, Canada" />
+
+            <TextView
+                android:id="@+id/tv_detail_temp_large"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="14dp"
+                android:fontFamily="@font/avenir_ltsd_black"
+                android:textColor="#190A36"
+                android:textSize="120sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_detail_state_country"
+                app:tempInCelsiusWithoutSymbol="@{viewModel.forecastResponse.current.temp_c}"
+                tools:text="19" />
+
+            <TextView
+                android:id="@+id/tv_celsius"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:textColor="#190A36"
+                android:textSize="40sp"
+                app:layout_constraintBottom_toBottomOf="@id/tv_detail_temp_large"
+                app:layout_constraintStart_toEndOf="@id/tv_detail_temp_large"
+                app:layout_constraintTop_toTopOf="@id/tv_detail_temp_large"
+                app:layout_constraintVertical_bias="0.25"
+                android:text="@string/celsius" />
+
+            <ImageView
+                android:id="@+id/iv_up_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:src="@drawable/arrow_upward"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_detail_temp_large" />
+
+            <TextView
+                android:id="@+id/tv_up_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                app:layout_constraintBottom_toBottomOf="@id/iv_up_temp"
+                app:layout_constraintStart_toEndOf="@id/iv_up_temp"
+                app:layout_constraintTop_toTopOf="@id/iv_up_temp"
+                app:tempInCelsius="@{viewModel.forecastResponse.forecast.forecastday.get(0).day.maxtemp_c}"
+                tools:text="20°c" />
+
+            <ImageView
+                android:id="@+id/iv_down_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:src="@drawable/arrow_downward"
+                app:layout_constraintStart_toEndOf="@id/tv_up_temp"
+                app:layout_constraintTop_toBottomOf="@id/tv_detail_temp_large" />
+
+            <TextView
+                android:id="@+id/tv_down_temp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                app:layout_constraintBottom_toBottomOf="@id/iv_down_temp"
+                app:layout_constraintStart_toEndOf="@id/iv_down_temp"
+                app:layout_constraintTop_toTopOf="@id/iv_down_temp"
+                app:tempInCelsius="@{viewModel.forecastResponse.forecast.forecastday.get(0).day.mintemp_c}"
+                tools:text="12°c" />
+
+            <ImageView
+                android:id="@+id/iv_current"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_marginTop="70dp"
+                android:layout_marginEnd="16dp"
+                app:iconUrl="@{viewModel.forecastResponse.current.condition.icon}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tv_detail_state_country" />
+
+            <TextView
+                android:id="@+id/tv_feels_like"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="26dp"
+                android:layout_marginEnd="16dp"
+                android:fontFamily="@font/avenir_ltsd_book"
+                android:textColor="@color/black"
+                android:textSize="16sp"
+                app:feelsLikeTemp="@{viewModel.forecastResponse.current.feelslike_c}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/iv_current"
+                tools:text="feels like 20°c" />
+
+            <include
+                android:id="@+id/cl_hourly"
+                layout="@layout/layout_hourly"
+                app:forecastData="@{viewModel.forecastResponse}" />
+
+            <include
+                android:id="@+id/cl_forecast"
+                layout="@layout/layout_forecast" />
+
+            <include
+                android:id="@+id/cl_telemetry"
+                layout="@layout/layout_telemetry"
+                app:forecastData="@{viewModel.forecastResponse}" />
+
+            <include
+                android:id="@+id/cl_alerts"
+                layout="@layout/layout_alerts"
+                app:forecastData="@{viewModel.forecastResponse}" />
+
+            <ProgressBar
+                android:id="@+id/pb_detail"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="@{viewModel.showProgressBar ? View.VISIBLE : View.GONE}"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+    </ScrollView>
+
+</layout>

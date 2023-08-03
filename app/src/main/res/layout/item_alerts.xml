@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+        <variable
+            name="alertData"
+            type="com.adsama.model.Alert" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="14dp"
+        android:background="@drawable/cream_rounded_cornerns_bg">
+
+        <TextView
+            android:id="@+id/tv_alert_event"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="16dp"
+            android:background="@drawable/orange_rounded_corners_bg"
+            android:fontFamily="@font/avenir_ltsd_book"
+            android:paddingStart="10dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="10dp"
+            android:text="@{alertData.event}"
+            android:paddingBottom="4dp"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Thunderstorm" />
+
+        <TextView
+            android:id="@+id/tv_alert_headline"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="34dp"
+            android:fontFamily="@font/avenir_ltsd_black"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:text="@{alertData.headline}"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="Environment Canada" />
+
+        <TextView
+            android:id="@+id/tv_alert_duration"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="10dp"
+            android:fontFamily="@font/avenir_ltsd_book"
+            android:maxLines="1"
+            android:textColor="#8C8C8C"
+            android:textSize="12sp"
+            android:text="@{alertData.effective + `-` + alertData.expires}"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_alert_headline"
+            tools:text="21 Jul, 2023 8:00 pm -  29 Jul, 2023 9:00 pm" />
+
+        <TextView
+            android:id="@+id/tv_alert_description"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="14dp"
+            android:fontFamily="@font/avenir_ltsd_book"
+            android:textColor="@color/black"
+            android:textSize="16sp"
+            android:text="@{alertData.desc}"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_alert_duration"
+            tools:text="Conditions are favourable for the development of severe thunderstorms that may be capable of producing strong wind gusts, large hail and heavy rain and Snow." />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</layout>

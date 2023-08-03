@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Weather App</string>
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="textview_empty_hint">Search for a city or US/UK zip to check\n the weather</string>
+    <string name="add">Add</string>
+    <string name="remove">Remove</string>
+    <string name="delete">Delete</string>
+    <string name="precipitation">Precipitation</string>
+    <string name="wind">Wind</string>
+    <string name="uv_index">UV index</string>
+    <string name="sun">Sun</string>
+    <string name="alerts">Alerts</string>
+    <string name="etv_hint">City, Region or US/UK zip code</string>
+    <string name="celsius">°c</string>
+    <string name="feels_like">feels like </string>
+    <string name="current_location">Current Location</string>
+    <string name="five_day_forecast">5-day forecast</string>
+</resources>
