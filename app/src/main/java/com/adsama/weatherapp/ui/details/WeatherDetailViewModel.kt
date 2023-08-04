@@ -78,26 +78,33 @@ class WeatherDetailViewModel @Inject constructor(
             saveLocationUseCase.executeUseCase(
                 SaveLocationUseCase.RequestValues(buildPersistedData(forecastResponse.value!!))
             )
+            getAllSavedLocations()
         }
-        getAllSavedLocations()
     }
 
     private fun getAllSavedLocations() {
         mCoroutineScope.launch {
-            val locations =
-                getSavedLocationUseCase.executeUseCase(FetchSaveLocationUseCase.RequestValues())
+            val locations = getSavedLocationUseCase.executeUseCase(FetchSaveLocationUseCase.RequestValues())
             mPersistedDataList = locations.storedLocations as ArrayList<PersistedWeatherModel>
-            for (persistedItem in mPersistedDataList) {
-                _isPersisted.value = persistedItem.name == buildPersistedData(forecastResponse.value!!).name
+            if (mPersistedDataList.isNotEmpty()) {
+                _isPersisted.value =
+                    mPersistedDataList.contains(mPersistedDataList.find { persistedWeatherModel -> persistedWeatherModel.name == forecastResponse.value!!.location.name })
+            } else {
+                _isPersisted.value = false
             }
         }
     }
 
     fun removeLocationFromSaved() {
         mCoroutineScope.launch {
-            deleteLocationUseCase.executeUseCase(DeleteLocationUseCase.RequestValues(buildPersistedData(forecastResponse.value!!)))
+            deleteLocationUseCase.executeUseCase(mPersistedDataList.find { persistedWeatherModel -> persistedWeatherModel.name == forecastResponse.value!!.location.name }
+                ?.let {
+                    DeleteLocationUseCase.RequestValues(
+                        it
+                    )
+                })
+            getAllSavedLocations()
         }
-        getAllSavedLocations()
     }
 
     private fun buildPersistedData(forecastResponse: ForecastResponse): PersistedWeatherModel {
