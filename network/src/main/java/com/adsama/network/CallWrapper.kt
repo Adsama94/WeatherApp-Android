@@ -51,8 +51,3 @@ private fun convertErrorBody(throwable: HttpException): WeatherErrorResponse? {
         return null
     }
 }
-
-private fun convertErrorBody(string: String): WeatherErrorResponse? {
-    val moshiAdapter = Moshi.Builder().build().adapter(WeatherErrorResponse::class.java)
-    return moshiAdapter.fromJson(string)
-}
