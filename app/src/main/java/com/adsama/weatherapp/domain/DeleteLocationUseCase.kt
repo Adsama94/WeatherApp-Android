@@ -7,15 +7,13 @@ import javax.inject.Inject
 class DeleteLocationUseCase @Inject constructor(private val mWeatherDataSource: WeatherDataSource) :
     UseCase<DeleteLocationUseCase.RequestValues, DeleteLocationUseCase.ResponseValue>() {
 
-    public override suspend fun executeUseCase(requestValues: RequestValues?): ResponseValue {
-        val deleteResponse =
-            mWeatherDataSource.deleteLocation(requestValues!!.persistedWeatherModel)
-        return ResponseValue(deleteResponse)
+    override suspend fun executeUseCase(requestValues: RequestValues?) {
+        mWeatherDataSource.deleteLocation(requestValues!!.persistedWeatherModel)
     }
 
     data class RequestValues(val persistedWeatherModel: PersistedWeatherModel) :
         UseCase.RequestValues
 
-    data class ResponseValue(val deletionResponse: String) : UseCase.ResponseValue
+    data class ResponseValue(val nothing: Nothing) : UseCase.ResponseValue
 
 }

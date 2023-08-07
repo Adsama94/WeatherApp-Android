@@ -7,9 +7,8 @@ import javax.inject.Inject
 class SaveLocationUseCase @Inject constructor(private val mWeatherDataSource: WeatherDataSource) :
     UseCase<SaveLocationUseCase.RequestValues, SaveLocationUseCase.ResponseValue>() {
 
-    public override suspend fun executeUseCase(requestValues: RequestValues?): ResponseValue {
-        val searchResponse = mWeatherDataSource.saveLocation(requestValues!!.persistedWeatherModel)
-        return ResponseValue(searchResponse)
+    override suspend fun executeUseCase(requestValues: RequestValues?) {
+        mWeatherDataSource.saveLocation(requestValues!!.persistedWeatherModel)
     }
 
     data class RequestValues(val persistedWeatherModel: PersistedWeatherModel) :

@@ -1,17 +1,18 @@
 package com.adsama.weatherapp.domain
 
-abstract class UseCase<in Q : UseCase.RequestValues, out R : UseCase.ResponseValue> {
+abstract class UseCase<Q : UseCase.RequestValues, P : UseCase.ResponseValue> {
 
-    private var requestValues: Q? = null
+    var requestValues: Q? = null
+    var useCaseCallback: UseCaseCallback<P>? = null
 
-    internal suspend fun run() {
-        executeUseCase(requestValues)
-    }
-
-    protected abstract suspend fun executeUseCase(requestValues: Q?) : R
+    internal abstract suspend fun executeUseCase(requestValues: Q?)
 
     interface RequestValues
-
     interface ResponseValue
+
+    interface UseCaseCallback<R> {
+        fun onSuccess(response: R)
+        fun onError(t: Throwable)
+    }
 
 }
