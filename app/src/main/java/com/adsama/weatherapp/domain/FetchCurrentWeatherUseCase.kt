@@ -6,9 +6,22 @@ import com.adsama.weatherapp.source.WeatherDataSource
 class FetchCurrentWeatherUseCase(private val mWeatherDataSource: WeatherDataSource) :
     UseCase<FetchCurrentWeatherUseCase.RequestValues, FetchCurrentWeatherUseCase.ResponseValue>() {
 
-    public override suspend fun executeUseCase(requestValues: RequestValues?): ResponseValue {
-        val forecastResponse = mWeatherDataSource.getForecast(requestValues!!.location)
-        return ResponseValue(forecastResponse)
+    interface FetchCurrentWeatherCallbacks : UseCaseCallback<ResponseValue>
+
+    override suspend fun executeUseCase(requestValues: RequestValues?) {
+        mWeatherDataSource.getForecast(
+            requestValues!!.location,
+            object : WeatherDataSource.LoadForecastCallback {
+                override fun onForecastLoaded(forecastResponse: ForecastResponse) {
+                    val responseValue = ResponseValue(forecastResponse)
+                    (useCaseCallback as FetchCurrentWeatherCallbacks).onSuccess(responseValue)
+                }
+
+                override fun onError(t: Throwable) {
+                    (useCaseCallback as FetchCurrentWeatherCallbacks).onError(t)
+                }
+
+            })
     }
 
     data class RequestValues(val location: String) : UseCase.RequestValues

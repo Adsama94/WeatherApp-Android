@@ -7,9 +7,20 @@ import javax.inject.Inject
 class FetchSaveLocationUseCase @Inject constructor(private val mWeatherDataSource: WeatherDataSource) :
     UseCase<FetchSaveLocationUseCase.RequestValues, FetchSaveLocationUseCase.ResponseValue>() {
 
-    public override suspend fun executeUseCase(requestValues: RequestValues?): ResponseValue {
-        val savedLocationsResponse = mWeatherDataSource.getAllSavedLocations()
-        return ResponseValue(savedLocationsResponse)
+    interface FetchSaveLocationCallback : UseCaseCallback<ResponseValue>
+
+    override suspend fun executeUseCase(requestValues: RequestValues?) {
+        mWeatherDataSource.getAllSavedLocations(object : WeatherDataSource.LoadSavedCallback {
+            override fun onSavedLoaded(savedList: List<PersistedWeatherModel>) {
+                val responseValue = ResponseValue(savedList)
+                (useCaseCallback as FetchSaveLocationCallback).onSuccess(responseValue)
+            }
+
+            override fun onError(t: Throwable) {
+                (useCaseCallback as FetchSaveLocationCallback).onError(t)
+            }
+
+        })
     }
 
     data class RequestValues(val requestValue: String? = null) :

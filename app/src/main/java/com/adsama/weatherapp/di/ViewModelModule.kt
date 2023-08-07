@@ -1,7 +1,9 @@
 package com.adsama.weatherapp.di
 
 import com.adsama.weatherapp.domain.DeleteLocationUseCase
+import com.adsama.weatherapp.domain.FetchCurrentWeatherUseCase
 import com.adsama.weatherapp.domain.FetchSaveLocationUseCase
+import com.adsama.weatherapp.domain.SaveLocationUseCase
 import com.adsama.weatherapp.domain.SearchLocationUseCase
 import com.adsama.weatherapp.source.WeatherDataSource
 import dagger.Module
@@ -11,7 +13,7 @@ import dagger.hilt.android.components.ViewModelComponent
 
 @Module
 @InstallIn(ViewModelComponent::class)
-object HomeViewModelModule {
+object ViewModelModule {
 
     @Provides
     fun provideSearchLocationUseCase(weatherDataSource: WeatherDataSource): SearchLocationUseCase {
@@ -26,6 +28,16 @@ object HomeViewModelModule {
     @Provides
     fun provideDeleteLocationUseCase(weatherDataSource: WeatherDataSource): DeleteLocationUseCase {
         return DeleteLocationUseCase(weatherDataSource)
+    }
+
+    @Provides
+    fun provideCurrentWeatherUseCase(weatherDataSource: WeatherDataSource): FetchCurrentWeatherUseCase {
+        return FetchCurrentWeatherUseCase(weatherDataSource)
+    }
+
+    @Provides
+    fun provideSaveLocationUseCase(weatherDataSource: WeatherDataSource): SaveLocationUseCase {
+        return SaveLocationUseCase(weatherDataSource)
     }
 
 }

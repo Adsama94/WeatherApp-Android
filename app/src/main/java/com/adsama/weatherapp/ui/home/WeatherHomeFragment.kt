@@ -68,6 +68,16 @@ class WeatherHomeFragment : Fragment(), LocationCallbacks,
         setupEditText()
         observeData()
         registerPermissionResult()
+        requestLocationPermission()
+        mFragmentWeatherHomeBinding.ivCurrentLocation.setOnClickListener {
+            extractLocation()
+        }
+        mFragmentWeatherHomeBinding.tvCurrentLocation.setOnClickListener {
+            extractLocation()
+        }
+        mFragmentWeatherHomeBinding.clHome.setOnClickListener {
+            mFragmentWeatherHomeBinding.etvSearch.clearFocus()
+        }
         return mFragmentWeatherHomeBinding.root
     }
 
@@ -91,9 +101,11 @@ class WeatherHomeFragment : Fragment(), LocationCallbacks,
         mFragmentWeatherHomeBinding.etvSearch.setOnTouchListener { _, event ->
             if (MotionEvent.ACTION_UP == event.action) {
                 if (!isLocationPermissionGranted()) {
-                    // requestLocationPermission()
+                    mFragmentWeatherHomeBinding.ivCurrentLocation.visibility = View.GONE
+                    mFragmentWeatherHomeBinding.tvCurrentLocation.visibility = View.GONE
                 } else {
-                    extractLocation()
+                    mFragmentWeatherHomeBinding.ivCurrentLocation.visibility = View.VISIBLE
+                    mFragmentWeatherHomeBinding.tvCurrentLocation.visibility = View.VISIBLE
                 }
             }
             false
@@ -202,6 +214,8 @@ class WeatherHomeFragment : Fragment(), LocationCallbacks,
     }
 
     override fun getSelectedSuggestionClick(searchResponse: SearchResponse, position: Int) {
+        mFragmentWeatherHomeBinding.etvSearch.text.clear()
+        mFragmentWeatherHomeBinding.rvSearchSuggestions.visibility = View.GONE
         navigateToDetails(searchResponse.name)
         mWeatherHomeViewModel.clearVm()
     }

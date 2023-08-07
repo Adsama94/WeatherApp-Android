@@ -58,18 +58,30 @@ class WeatherDetailViewModel @Inject constructor(
         _showProgressBar.value = true
         mCoroutineScope.launch {
             try {
-                val result = fetchCurrentWeatherUseCase.executeUseCase(
-                    FetchCurrentWeatherUseCase.RequestValues(location)
+                fetchCurrentWeatherUseCase.useCaseCallback =
+                    object : FetchCurrentWeatherUseCase.FetchCurrentWeatherCallbacks {
+                        override fun onSuccess(response: FetchCurrentWeatherUseCase.ResponseValue) {
+                            _showProgressBar.value = false
+                            _forecastResponse.postValue(response.forecastResponse)
+                            _hourlyResponse.postValue(response.forecastResponse.forecast.forecastday[0].hour)
+                            _fiveDayForecastResponse.postValue(response.forecastResponse.forecast.forecastday)
+                            _alertsResponse.postValue(response.forecastResponse.alerts.alert)
+                        }
+
+                        override fun onError(t: Throwable) {
+                            _errorMessage.value = t.message
+                        }
+
+                    }
+                fetchCurrentWeatherUseCase.executeUseCase(
+                    FetchCurrentWeatherUseCase.RequestValues(
+                        location
+                    )
                 )
-                _forecastResponse.postValue(result.forecastResponse)
-                _hourlyResponse.postValue(result.forecastResponse.forecast.forecastday[0].hour)
-                _fiveDayForecastResponse.postValue(result.forecastResponse.forecast.forecastday)
-                _alertsResponse.postValue(result.forecastResponse.alerts.alert)
+                getAllSavedLocations()
             } catch (t: Throwable) {
-                _errorMessage.value = t.message
+                t.printStackTrace()
             }
-            _showProgressBar.value = false
-            getAllSavedLocations()
         }
     }
 
@@ -84,13 +96,28 @@ class WeatherDetailViewModel @Inject constructor(
 
     private fun getAllSavedLocations() {
         mCoroutineScope.launch {
-            val locations = getSavedLocationUseCase.executeUseCase(FetchSaveLocationUseCase.RequestValues())
-            mPersistedDataList = locations.storedLocations as ArrayList<PersistedWeatherModel>
-            if (mPersistedDataList.isNotEmpty()) {
-                _isPersisted.value =
-                    mPersistedDataList.contains(mPersistedDataList.find { persistedWeatherModel -> persistedWeatherModel.name == forecastResponse.value!!.location.name })
-            } else {
-                _isPersisted.value = false
+            try {
+                getSavedLocationUseCase.useCaseCallback =
+                    object : FetchSaveLocationUseCase.FetchSaveLocationCallback {
+                        override fun onSuccess(response: FetchSaveLocationUseCase.ResponseValue) {
+                            mPersistedDataList =
+                                response.storedLocations as ArrayList<PersistedWeatherModel>
+                            if (mPersistedDataList.isNotEmpty()) {
+                                _isPersisted.value =
+                                    mPersistedDataList.contains(mPersistedDataList.find { persistedWeatherModel -> persistedWeatherModel.name == forecastResponse.value!!.location.name })
+                            } else {
+                                _isPersisted.value = false
+                            }
+                        }
+
+                        override fun onError(t: Throwable) {
+                            _errorMessage.value = t.message
+                        }
+
+                    }
+                getSavedLocationUseCase.executeUseCase(FetchSaveLocationUseCase.RequestValues())
+            } catch (t: Throwable) {
+                t.printStackTrace()
             }
         }
     }

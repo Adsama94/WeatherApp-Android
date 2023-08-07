@@ -10,7 +10,6 @@ import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
-import dagger.hilt.android.components.ActivityComponent
 import dagger.hilt.android.components.ViewModelComponent
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
@@ -29,6 +28,12 @@ object WeatherDataSourceModule {
     @Singleton
     fun providePersistedWeatherSource(weatherLocationDAO: WeatherLocationDAO): PersistedWeatherSource {
         return PersistedWeatherSource(weatherLocationDAO)
+    }
+
+    @Provides
+    @Singleton
+    fun provideWeatherRepository(persistedWeatherSource: PersistedWeatherSource, remoteWeatherSource: RemoteWeatherSource): WeatherDataRepository {
+        return WeatherDataRepository(persistedWeatherSource, remoteWeatherSource)
     }
 
 }
