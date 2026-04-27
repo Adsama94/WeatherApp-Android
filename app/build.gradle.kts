@@ -1,23 +1,23 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("kotlin-android")
-    id("kotlin-kapt")
-    id("androidx.navigation.safeargs.kotlin")
-    id("com.google.dagger.hilt.android")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp")
 }
 
 android {
     namespace = "com.adsama.weatherapp"
-    compileSdk = 33
+    compileSdk = rootProject.extra["compileSdk"] as Int
+
     defaultConfig {
         applicationId = "com.adsama.weatherapp"
-        minSdk = 24
-        targetSdk = 33
+        minSdk = rootProject.extra["minSdk"] as Int
+        targetSdk = rootProject.extra["targetSdk"] as Int
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -27,39 +27,47 @@ android {
             )
         }
     }
-    dataBinding {
-        enable = true
-    }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = rootProject.extra["javaVersion"] as JavaVersion
+        targetCompatibility = rootProject.extra["javaVersion"] as JavaVersion
     }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-    kapt {
-        correctErrorTypes = true
+
+    buildFeatures {
+        compose = true
     }
 }
 
 dependencies {
+    implementation(project(":domain"))
+    implementation(project(":data"))
     implementation(project(":database"))
     implementation(project(":model"))
     implementation(project(":network"))
-    implementation("androidx.core:core-ktx:1.10.1")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.9.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.6.0")
-    implementation("androidx.navigation:navigation-ui-ktx:2.6.0")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
 
-    implementation("com.github.bumptech.glide:glide:4.15.1")
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
 
-    implementation("com.google.dagger:hilt-android:2.47")
-    kapt("com.google.dagger:hilt-android-compiler:2.47")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.google.material)
+    implementation(libs.playservices.location)
+    implementation(libs.glide)
 
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    implementation(libs.dagger.hilt.android)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.recyclerview)
+    ksp(libs.dagger.hilt.android.compiler)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.espresso)
 }

@@ -1,11 +1,11 @@
 package com.adsama.weatherapp.di
 
-import com.adsama.weatherapp.domain.DeleteLocationUseCase
-import com.adsama.weatherapp.domain.FetchCurrentWeatherUseCase
-import com.adsama.weatherapp.domain.FetchSaveLocationUseCase
-import com.adsama.weatherapp.domain.SaveLocationUseCase
-import com.adsama.weatherapp.domain.SearchLocationUseCase
-import com.adsama.weatherapp.source.WeatherDataSource
+import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.FetchCurrentWeatherUseCase
+import com.adsama.domain.FetchSaveLocationUseCase
+import com.adsama.domain.SaveLocationUseCase
+import com.adsama.domain.SearchLocationUseCase
+import com.adsama.domain.WeatherDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

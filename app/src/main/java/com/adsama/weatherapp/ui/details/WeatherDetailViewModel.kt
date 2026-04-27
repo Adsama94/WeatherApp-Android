@@ -1,22 +1,23 @@
 package com.adsama.weatherapp.ui.details
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.adsama.database.PersistedWeatherModel
+import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.FetchCurrentWeatherUseCase
+import com.adsama.domain.FetchSaveLocationUseCase
+import com.adsama.domain.SaveLocationUseCase
 import com.adsama.model.Alert
 import com.adsama.model.ForecastDay
 import com.adsama.model.ForecastResponse
 import com.adsama.model.Hour
-import com.adsama.weatherapp.domain.DeleteLocationUseCase
-import com.adsama.weatherapp.domain.FetchCurrentWeatherUseCase
-import com.adsama.weatherapp.domain.FetchSaveLocationUseCase
-import com.adsama.weatherapp.domain.SaveLocationUseCase
+import com.adsama.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,111 +28,115 @@ class WeatherDetailViewModel @Inject constructor(
     private val deleteLocationUseCase: DeleteLocationUseCase
 ) : ViewModel() {
 
-    private val mCoroutineScope = CoroutineScope(Job() + Dispatchers.Main)
+    private val _forecastResponse = MutableStateFlow<ForecastResponse?>(null)
+    val forecastResponse: StateFlow<ForecastResponse?> = _forecastResponse.asStateFlow()
 
-    private val _forecastResponse = MutableLiveData<ForecastResponse>()
-    val forecastResponse: LiveData<ForecastResponse> get() = _forecastResponse
+    private val _hourlyResponse = MutableStateFlow<List<Hour>>(emptyList())
+    val hourlyResponse: StateFlow<List<Hour>> = _hourlyResponse.asStateFlow()
 
-    private val _hourlyResponse = MutableLiveData<List<Hour>>()
-    val hourlyResponse: LiveData<List<Hour>> get() = _hourlyResponse
+    private val _fiveDayForecastResponse = MutableStateFlow<List<ForecastDay>>(emptyList())
+    val fiveDayForecastResponse: StateFlow<List<ForecastDay>> =
+        _fiveDayForecastResponse.asStateFlow()
 
-    private val _fiveDayForecastResponse = MutableLiveData<List<ForecastDay>>()
-    val fiveDayForecastResponse: LiveData<List<ForecastDay>> get() = _fiveDayForecastResponse
+    private val _alertsResponse = MutableStateFlow<List<Alert>>(emptyList())
+    val alertsResponse: StateFlow<List<Alert>> = _alertsResponse.asStateFlow()
 
-    private val _alertsResponse = MutableLiveData<List<Alert>>()
-    val alertsResponse: LiveData<List<Alert>> get() = _alertsResponse
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    private val _errorMessage = MutableLiveData<String>()
-    val errorMessage: LiveData<String> get() = _errorMessage
+    private val _showProgressBar = MutableStateFlow(false)
+    val showProgressBar: StateFlow<Boolean> = _showProgressBar.asStateFlow()
 
-    private val _showProgressBar = MutableLiveData<Boolean>()
-    val showProgressBar: LiveData<Boolean>
-        get() = _showProgressBar
+    private var mPersistedDataList: List<PersistedWeatherModel> = emptyList()
 
-    private var mPersistedDataList: ArrayList<PersistedWeatherModel> = arrayListOf()
+    private val _isPersisted = MutableStateFlow(false)
+    val isPersisted: StateFlow<Boolean> = _isPersisted.asStateFlow()
 
-    private val _isPersisted = MutableLiveData(false)
-    val isPersisted: LiveData<Boolean>
-        get() = _isPersisted
+    init {
+        getAllSavedLocations()
+    }
 
     fun getForecastData(location: String) {
-        _showProgressBar.value = true
-        mCoroutineScope.launch {
-            try {
-                fetchCurrentWeatherUseCase.useCaseCallback =
-                    object : FetchCurrentWeatherUseCase.FetchCurrentWeatherCallbacks {
-                        override fun onSuccess(response: FetchCurrentWeatherUseCase.ResponseValue) {
-                            _showProgressBar.value = false
-                            _forecastResponse.postValue(response.forecastResponse)
-                            _hourlyResponse.postValue(response.forecastResponse.forecast.forecastday[0].hour)
-                            _fiveDayForecastResponse.postValue(response.forecastResponse.forecast.forecastday)
-                            _alertsResponse.postValue(response.forecastResponse.alerts.alert)
-                        }
+        fetchCurrentWeatherUseCase(location).onEach { result ->
+            when (result) {
+                is Result.Loading -> _showProgressBar.value = true
+                is Result.Success -> {
+                    _showProgressBar.value = false
+                    val forecast = result.data
+                    _forecastResponse.value = forecast
+                    _hourlyResponse.value = forecast.forecast.forecastday[0].hour
+                    _fiveDayForecastResponse.value = forecast.forecast.forecastday
+                    _alertsResponse.value = forecast.alerts.alert
+                    checkIfLocationIsSaved(forecast.location.name ?: "")
+                }
 
-                        override fun onError(t: Throwable) {
-                            _errorMessage.value = t.message
-                        }
-
-                    }
-                fetchCurrentWeatherUseCase.executeUseCase(
-                    FetchCurrentWeatherUseCase.RequestValues(
-                        location
-                    )
-                )
-                getAllSavedLocations()
-            } catch (t: Throwable) {
-                t.printStackTrace()
+                is Result.Error -> {
+                    _showProgressBar.value = false
+                    _errorMessage.value = result.getErrorMessage()
+                }
             }
-        }
+        }.launchIn(viewModelScope)
     }
 
     fun saveLocationData() {
-        mCoroutineScope.launch {
-            saveLocationUseCase.executeUseCase(
-                SaveLocationUseCase.RequestValues(buildPersistedData(forecastResponse.value!!))
-            )
-            getAllSavedLocations()
-        }
+        val forecast = _forecastResponse.value ?: return
+        val persistedModel = buildPersistedData(forecast)
+        saveLocationUseCase(persistedModel).onEach { result ->
+            when (result) {
+                is Result.Loading -> _showProgressBar.value = true
+                is Result.Success -> {
+                    _showProgressBar.value = false
+                    getAllSavedLocations()
+                }
+
+                is Result.Error -> {
+                    _showProgressBar.value = false
+                    _errorMessage.value = result.getErrorMessage()
+                }
+            }
+        }.launchIn(viewModelScope)
     }
 
     private fun getAllSavedLocations() {
-        mCoroutineScope.launch {
-            try {
-                getSavedLocationUseCase.useCaseCallback =
-                    object : FetchSaveLocationUseCase.FetchSaveLocationCallback {
-                        override fun onSuccess(response: FetchSaveLocationUseCase.ResponseValue) {
-                            mPersistedDataList =
-                                response.storedLocations as ArrayList<PersistedWeatherModel>
-                            if (mPersistedDataList.isNotEmpty()) {
-                                _isPersisted.value =
-                                    mPersistedDataList.contains(mPersistedDataList.find { persistedWeatherModel -> persistedWeatherModel.name == forecastResponse.value!!.location.name })
-                            } else {
-                                _isPersisted.value = false
-                            }
-                        }
-
-                        override fun onError(t: Throwable) {
-                            _errorMessage.value = t.message
-                        }
-
+        getSavedLocationUseCase(Unit).onEach { result ->
+            when (result) {
+                is Result.Loading -> {}
+                is Result.Success -> {
+                    mPersistedDataList = result.data
+                    _forecastResponse.value?.location?.name?.let { name ->
+                        checkIfLocationIsSaved(name)
                     }
-                getSavedLocationUseCase.executeUseCase(FetchSaveLocationUseCase.RequestValues())
-            } catch (t: Throwable) {
-                t.printStackTrace()
+                }
+
+                is Result.Error -> {
+                    _errorMessage.value = result.getErrorMessage()
+                }
             }
-        }
+        }.launchIn(viewModelScope)
+    }
+
+    private fun checkIfLocationIsSaved(locationName: String) {
+        _isPersisted.value = mPersistedDataList.any { it.name == locationName }
     }
 
     fun removeLocationFromSaved() {
-        mCoroutineScope.launch {
-            deleteLocationUseCase.executeUseCase(mPersistedDataList.find { persistedWeatherModel -> persistedWeatherModel.name == forecastResponse.value!!.location.name }
-                ?.let {
-                    DeleteLocationUseCase.RequestValues(
-                        it
-                    )
-                })
-            getAllSavedLocations()
-        }
+        val locationName = _forecastResponse.value?.location?.name ?: return
+        val locationToDelete = mPersistedDataList.find { it.name == locationName } ?: return
+
+        deleteLocationUseCase(locationToDelete).onEach { result ->
+            when (result) {
+                is Result.Loading -> _showProgressBar.value = true
+                is Result.Success -> {
+                    _showProgressBar.value = false
+                    getAllSavedLocations()
+                }
+
+                is Result.Error -> {
+                    _showProgressBar.value = false
+                    _errorMessage.value = result.getErrorMessage()
+                }
+            }
+        }.launchIn(viewModelScope)
     }
 
     private fun buildPersistedData(forecastResponse: ForecastResponse): PersistedWeatherModel {
@@ -139,9 +144,9 @@ class WeatherDetailViewModel @Inject constructor(
             0,
             forecastResponse.location.lat,
             forecastResponse.location.lon,
-            forecastResponse.location.name!!,
-            forecastResponse.location.region!!,
-            forecastResponse.location.country!!,
+            forecastResponse.location.name ?: "",
+            forecastResponse.location.region ?: "",
+            forecastResponse.location.country ?: "",
             forecastResponse.current.temp_c,
             forecastResponse.current.condition.text,
             forecastResponse.current.condition.icon,
@@ -149,8 +154,8 @@ class WeatherDetailViewModel @Inject constructor(
         )
     }
 
-    fun clearVm() {
-        onCleared()
+    fun clearErrorMessage() {
+        _errorMessage.value = null
     }
 
 }

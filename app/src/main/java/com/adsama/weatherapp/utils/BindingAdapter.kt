@@ -3,7 +3,6 @@ package com.adsama.weatherapp.utils
 import android.annotation.SuppressLint
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.databinding.BindingAdapter
 import com.bumptech.glide.Glide
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -11,7 +10,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 
-@BindingAdapter("iconUrl")
 fun setIconUrl(imageView: ImageView, iconUrl: String?) {
     if (iconUrl != null) {
         val updatedIconUrl = "https:$iconUrl"
@@ -20,37 +18,31 @@ fun setIconUrl(imageView: ImageView, iconUrl: String?) {
 }
 
 @SuppressLint("SetTextI18n")
-@BindingAdapter("tempInCelsius")
 fun setTempInCelsius(textView: TextView, temp: Double) {
     val tempInInt = temp.toInt()
     textView.text = "$tempInInt°c"
 }
 
-@BindingAdapter("tempInCelsiusWithoutSymbol")
 fun tempInCelsiusWithoutSymbol(textView: TextView, temp: Double) {
     val tempInInt = temp.toInt()
     textView.text = tempInInt.toString()
 }
 
-@BindingAdapter("feelsLikeTemp")
 fun feelsLikeTemp(textView: TextView, temp: Double) {
     val tempToInt = temp.toInt()
     textView.text = "feels like $tempToInt°c"
 }
 
-@BindingAdapter("setRainInMm")
 fun setRainInMm(textView: TextView, precip: Double) {
     val precipInInt = precip.toInt()
     textView.text = "$precipInInt mm"
 }
 
-@BindingAdapter("setWindInKph")
 fun setWindInKph(textView: TextView, wind: Double) {
     val windToString = wind.toString()
     textView.text = "$windToString kph"
 }
 
-@BindingAdapter("setDayFromDate")
 fun setDayFromDate(textView: TextView, inputDate: String) {
     val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     val calendar = Calendar.getInstance()
@@ -74,7 +66,6 @@ fun setDayFromDate(textView: TextView, inputDate: String) {
     }
 }
 
-@BindingAdapter("hourFromDate")
 fun setHourFromDate(textView: TextView, inputTime: Long) {
     val currentTime = System.currentTimeMillis() / 1000
     val closestTime = abs(inputTime - currentTime)
