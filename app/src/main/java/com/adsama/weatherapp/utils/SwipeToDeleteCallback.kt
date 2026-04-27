@@ -13,22 +13,21 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.adsama.weatherapp.R
+import androidx.core.graphics.toColorInt
 
 
 abstract class SwipeToDeleteCallback(context: Context) : ItemTouchHelper.Callback() {
 
-    private var mContext: Context
+    private var mContext: Context = context
     private var mClearPaint: Paint
-    private var mBackground: ColorDrawable
+    private var mBackground: ColorDrawable = ColorDrawable()
     private var deleteDrawable: Drawable
     private var backgroundColor = 0
     private var intrinsicWidth = 0
     private var intrinsicHeight = 0
 
     init {
-        mContext = context
-        mBackground = ColorDrawable()
-        backgroundColor = Color.parseColor("#E34C4C")
+        backgroundColor = "#E34C4C".toColorInt()
         mClearPaint = Paint()
         mClearPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         deleteDrawable = ContextCompat.getDrawable(mContext, R.drawable.delete_white)!!
@@ -72,7 +71,7 @@ abstract class SwipeToDeleteCallback(context: Context) : ItemTouchHelper.Callbac
                 itemView.right.toFloat(),
                 itemView.bottom.toFloat()
             )
-            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, false)
             return
         }
         mBackground.color = backgroundColor

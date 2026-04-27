@@ -1,18 +1,19 @@
 package com.adsama.weatherapp.ui.home
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.adsama.database.PersistedWeatherModel
+import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.FetchSaveLocationUseCase
+import com.adsama.domain.SearchLocationUseCase
+import com.adsama.model.Result
 import com.adsama.model.SearchResponse
-import com.adsama.weatherapp.domain.DeleteLocationUseCase
-import com.adsama.weatherapp.domain.FetchSaveLocationUseCase
-import com.adsama.weatherapp.domain.SearchLocationUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,78 +23,89 @@ class WeatherHomeViewModel @Inject constructor(
     private val deleteLocationUseCase: DeleteLocationUseCase
 ) : ViewModel() {
 
-    private val mCoroutineScope = CoroutineScope(Job() + Dispatchers.Main)
+    private var latLongFromGps: String? = null
 
-    private lateinit var latLongFromGps: String
-    private val _savedLocationResults = MutableLiveData<ArrayList<PersistedWeatherModel>>()
-    val savedLocationResults: LiveData<ArrayList<PersistedWeatherModel>> get() = _savedLocationResults
+    private val _savedLocationResults = MutableStateFlow<List<PersistedWeatherModel>>(emptyList())
+    val savedLocationResults: StateFlow<List<PersistedWeatherModel>> =
+        _savedLocationResults.asStateFlow()
 
-    private val _searchSuggestions = MutableLiveData<List<SearchResponse>>()
-    val searchSuggestionsResult: LiveData<List<SearchResponse>> get() = _searchSuggestions
+    private val _searchSuggestions = MutableStateFlow<List<SearchResponse>>(emptyList())
+    val searchSuggestionsResult: StateFlow<List<SearchResponse>> = _searchSuggestions.asStateFlow()
 
-    private val _errorMessage = MutableLiveData<String>()
-    val errorMessage: LiveData<String> get() = _errorMessage
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    private val _showProgressBar = MutableStateFlow(false)
+    val showProgressBar: StateFlow<Boolean> = _showProgressBar.asStateFlow()
+
+    init {
+        getAllSavedLocations()
+    }
 
     fun getAllSavedLocations() {
-        mCoroutineScope.launch {
-            try {
-                getSavedLocationUseCase.useCaseCallback =
-                    object : FetchSaveLocationUseCase.FetchSaveLocationCallback {
-                        override fun onSuccess(response: FetchSaveLocationUseCase.ResponseValue) {
-                            _savedLocationResults.value =
-                                response.storedLocations as ArrayList<PersistedWeatherModel>
-                        }
+        getSavedLocationUseCase(Unit).onEach { result ->
+            when (result) {
+                is Result.Loading -> _showProgressBar.value = true
+                is Result.Success -> {
+                    _showProgressBar.value = false
+                    _savedLocationResults.value = result.data
+                }
 
-                        override fun onError(t: Throwable) {
-                            _errorMessage.value = "Error loading saved locations: ${t.message}"
-                        }
-                    }
-                getSavedLocationUseCase.executeUseCase(FetchSaveLocationUseCase.RequestValues())
-            } catch (t: Throwable) {
-                t.printStackTrace()
+                is Result.Error -> {
+                    _showProgressBar.value = false
+                    _errorMessage.value =
+                        "Error loading saved locations: ${result.getErrorMessage()}"
+                }
             }
-        }
+        }.launchIn(viewModelScope)
     }
 
     fun searchLocation(location: String) {
-        mCoroutineScope.launch {
-            try {
-                searchLocationUseCase.useCaseCallback =
-                    object : SearchLocationUseCase.SearchLocationCallbacks {
-                        override fun onSuccess(response: SearchLocationUseCase.ResponseValue) {
-                            _searchSuggestions.value = response.searchResponse
-                        }
-
-                        override fun onError(t: Throwable) {
-                            _errorMessage.value = "Error loading saved locations: ${t.message}"
-                        }
-
-                    }
-                searchLocationUseCase.executeUseCase(SearchLocationUseCase.RequestValues(location))
-            } catch (t: Throwable) {
-                t.printStackTrace()
-            }
+        if (location.isEmpty()) {
+            _searchSuggestions.value = emptyList()
+            return
         }
+        searchLocationUseCase(location).onEach { result ->
+            when (result) {
+                is Result.Loading -> _showProgressBar.value = true
+                is Result.Success -> {
+                    _showProgressBar.value = false
+                    _searchSuggestions.value = result.data
+                }
+
+                is Result.Error -> {
+                    _showProgressBar.value = false
+                    _errorMessage.value = "Error searching location: ${result.getErrorMessage()}"
+                }
+            }
+        }.launchIn(viewModelScope)
     }
 
     fun removeLocationFromSaved(position: Int) {
-        mCoroutineScope.launch {
-            deleteLocationUseCase.executeUseCase(
-                DeleteLocationUseCase.RequestValues(
-                    _savedLocationResults.value!![position]
-                )
-            )
-            getAllSavedLocations()
-        }
+        val locationToDelete = _savedLocationResults.value.getOrNull(position) ?: return
+        deleteLocationUseCase(locationToDelete).onEach { result ->
+            when (result) {
+                is Result.Loading -> _showProgressBar.value = true
+                is Result.Success -> {
+                    _showProgressBar.value = false
+                    getAllSavedLocations()
+                }
+
+                is Result.Error -> {
+                    _showProgressBar.value = false
+                    _errorMessage.value = "Error deleting location: ${result.getErrorMessage()}"
+                }
+            }
+        }.launchIn(viewModelScope)
     }
 
     fun setLocationFromGps(latitude: Double, longitude: Double): String {
-        latLongFromGps = "$latitude,$longitude"
-        return latLongFromGps
+        val latLong = "$latitude,$longitude"
+        latLongFromGps = latLong
+        return latLong
     }
 
-    fun clearVm() {
-        onCleared()
+    fun clearErrorMessage() {
+        _errorMessage.value = null
     }
-
 }

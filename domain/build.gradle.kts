@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.adsama.database"
+    namespace = "com.adsama.domain"
     compileSdk = rootProject.extra["compileSdk"] as Int
 
     defaultConfig {
@@ -22,14 +22,10 @@ android {
 
 dependencies {
     implementation(project(":model"))
-    
-    implementation(libs.androidx.room.runtime)
-    ksp(libs.androidx.room.compiler)
-    implementation(libs.androidx.room.ktx)
+    implementation(project(":database"))
 
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.android.compiler)
 
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.test.junit)
 }
