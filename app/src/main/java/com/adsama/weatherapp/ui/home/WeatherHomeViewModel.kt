@@ -3,15 +3,13 @@ package com.adsama.weatherapp.ui.home
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.adsama.database.PersistedWeatherModel
 import com.adsama.domain.DeleteLocationUseCase
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
 import com.adsama.domain.SearchLocationUseCase
-import com.adsama.model.AppError
-import com.adsama.model.ForecastResponse
-import com.adsama.model.Result
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,9 +55,9 @@ class WeatherHomeViewModel @Inject constructor(
                         )
                     }
                     result.data.forEach { location ->
-                        if (location.locationId !in refreshedLocationIds) {
+                        if (location.id !in refreshedLocationIds) {
                             refreshWeatherForLocation(location)
-                            refreshedLocationIds.add(location.locationId)
+                            refreshedLocationIds.add(location.id)
                         }
                     }
                 }
@@ -68,7 +66,7 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLocalDataLoading = false,
-                            error = AppError.DatabaseError("Error loading saved locations: ${result.getErrorMessage()}")
+                            error = result.error
                         )
                     }
                 }
@@ -98,7 +96,7 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isSearchLoading = false,
-                            error = AppError.NetworkError("Error searching location: ${result.getErrorMessage()}")
+                            error = result.error
                         )
                     }
                 }
@@ -120,7 +118,7 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLocalDataLoading = false,
-                            error = AppError.DatabaseError("Error deleting location: ${result.getErrorMessage()}")
+                            error = result.error
                         )
                     }
                 }
@@ -138,8 +136,8 @@ class WeatherHomeViewModel @Inject constructor(
         _uiState.update { it.copy(isSearchActive = isActive) }
     }
 
-    fun refreshWeatherForLocation(location: PersistedWeatherModel) {
-        _uiState.update { it.copy(refreshingLocationIds = it.refreshingLocationIds + location.locationId) }
+    fun refreshWeatherForLocation(location: WeatherLocation) {
+        _uiState.update { it.copy(refreshingLocationIds = it.refreshingLocationIds + location.id) }
 
         fetchCurrentWeatherUseCase(location.name).onEach { result ->
             when (result) {
@@ -148,46 +146,25 @@ class WeatherHomeViewModel @Inject constructor(
                     val freshWeather = result.data
                     _uiState.update {
                         it.copy(
-                            freshWeatherData = it.freshWeatherData + (location.locationId to freshWeather),
-                            refreshingLocationIds = it.refreshingLocationIds - location.locationId
+                            freshWeatherData = it.freshWeatherData + (location.id to freshWeather),
+                            refreshingLocationIds = it.refreshingLocationIds - location.id
                         )
                     }
                     // Save the updated weather to database
                     saveLocationUseCase(
-                        buildPersistedData(
-                            freshWeather,
-                            location.locationId
-                        )
+                        freshWeather.location.copy(id = location.id)
                     ).launchIn(viewModelScope)
                 }
 
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(
-                            refreshingLocationIds = it.refreshingLocationIds - location.locationId,
-                            error = AppError.NetworkError("Error refreshing weather: ${result.getErrorMessage()}")
+                            refreshingLocationIds = it.refreshingLocationIds - location.id,
+                            error = result.error
                         )
                     }
                 }
             }
         }.launchIn(viewModelScope)
-    }
-
-    private fun buildPersistedData(
-        forecastResponse: ForecastResponse,
-        locationId: Long
-    ): PersistedWeatherModel {
-        return PersistedWeatherModel(
-            locationId = locationId,
-            lat = forecastResponse.location.lat,
-            lon = forecastResponse.location.lon,
-            name = forecastResponse.location.name ?: "",
-            region = forecastResponse.location.region ?: "",
-            country = forecastResponse.location.country ?: "",
-            temp_c = forecastResponse.current.temp_c,
-            text = forecastResponse.current.condition.text,
-            icon = forecastResponse.current.condition.icon,
-            date = forecastResponse.forecast.forecastday[0].date
-        )
     }
 }

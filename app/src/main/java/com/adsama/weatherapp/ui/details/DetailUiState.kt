@@ -1,21 +1,21 @@
 package com.adsama.weatherapp.ui.details
 
 import androidx.compose.runtime.Immutable
-import com.adsama.database.PersistedWeatherModel
-import com.adsama.model.Alert
-import com.adsama.model.AppError
-import com.adsama.model.ForecastDay
-import com.adsama.model.ForecastResponse
-import com.adsama.model.Hour
+import com.adsama.domain.model.DomainError
+import com.adsama.domain.model.ForecastDay
+import com.adsama.domain.model.HourlyWeather
+import com.adsama.domain.model.WeatherAlert
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.domain.model.WeatherReport
 
 @Immutable
 data class DetailUiState(
-    val forecast: ForecastResponse? = null,
-    val hourlyForecast: List<Hour> = emptyList(),
+    val forecast: WeatherReport? = null,
+    val hourlyForecast: List<HourlyWeather> = emptyList(),
     val fiveDayForecast: List<ForecastDay> = emptyList(),
-    val persistedDataList: List<PersistedWeatherModel> = emptyList(),
-    val alerts: List<Alert> = emptyList(),
+    val persistedDataList: List<WeatherLocation> = emptyList(),
+    val alerts: List<WeatherAlert> = emptyList(),
     val isPersisted: Boolean = false,
     val isLoading: Boolean = false,
-    val error: AppError? = null
+    val error: DomainError? = null
 )

@@ -54,8 +54,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.adsama.database.PersistedWeatherModel
-import com.adsama.model.SearchResponse
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.domain.model.WeatherReport
 import com.adsama.weatherapp.R
 
 @Composable
@@ -248,7 +248,7 @@ fun WeatherHomeContent(
                     ) {
                         itemsIndexed(
                             items = uiState.savedLocations,
-                            key = { _, item -> item.locationId }
+                            key = { _, item -> item.id }
                         ) { index, location ->
                             val swipeToDismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = {
@@ -284,8 +284,8 @@ fun WeatherHomeContent(
                             ) {
                                 SavedLocationItem(
                                     location = location,
-                                    freshWeatherData = uiState.freshWeatherData[location.locationId],
-                                    isRefreshing = location.locationId in uiState.refreshingLocationIds,
+                                    freshWeatherData = uiState.freshWeatherData[location.id],
+                                    isRefreshing = location.id in uiState.refreshingLocationIds,
                                     onClick = { onLocationClick(location.name) }
                                 )
                             }
@@ -322,7 +322,7 @@ fun CurrentLocationRow(onClick: () -> Unit) {
 }
 
 @Composable
-fun SearchSuggestionItem(suggestion: SearchResponse, onClick: () -> Unit) {
+fun SearchSuggestionItem(suggestion: WeatherLocation, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,12 +340,13 @@ fun SearchSuggestionItem(suggestion: SearchResponse, onClick: () -> Unit) {
 
 @Composable
 fun SavedLocationItem(
-    location: PersistedWeatherModel,
-    freshWeatherData: com.adsama.model.ForecastResponse?,
+    location: WeatherLocation,
+    freshWeatherData: WeatherReport?,
     isRefreshing: Boolean,
     onClick: () -> Unit
 ) {
-    val displayTemp = freshWeatherData?.current?.temp_c?.toInt() ?: location.temp_c.toInt()
+    val displayTemp =
+        freshWeatherData?.current?.tempC?.toInt() ?: location.temperature?.toInt() ?: 0
 
     Card(
         modifier = Modifier

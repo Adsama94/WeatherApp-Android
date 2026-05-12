@@ -42,14 +42,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.adsama.model.Alert
-import com.adsama.model.ForecastDay
-import com.adsama.model.ForecastResponse
-import com.adsama.model.Hour
+import com.adsama.domain.model.ForecastDay
+import com.adsama.domain.model.HourlyWeather
+import com.adsama.domain.model.WeatherAlert
+import com.adsama.domain.model.WeatherReport
 import com.adsama.weatherapp.R
 import com.adsama.weatherapp.utils.setDayFromDate
 import com.adsama.weatherapp.utils.setFormattedDate
@@ -179,7 +178,7 @@ fun WeatherDetailContent(
             TelemetrySection(data)
         }
         item {
-            HourlySection(data.current.condition.text, uiState.hourlyForecast)
+            HourlySection(data.current.conditionText, uiState.hourlyForecast)
         }
         item {
             FiveDayForecastSection(uiState.fiveDayForecast)
@@ -193,7 +192,7 @@ fun WeatherDetailContent(
 }
 
 @Composable
-fun WeatherHeader(data: ForecastResponse) {
+fun WeatherHeader(data: WeatherReport) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -211,18 +210,18 @@ fun WeatherHeader(data: ForecastResponse) {
             )
         }
         Text(
-            text = "${data.current.temp_c.toInt()}°",
+            text = "${data.current.tempC.toInt()}°",
             fontSize = 64.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = data.current.condition.text,
+            text = data.current.conditionText,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         Text(
-            text = "H:${data.forecast.forecastday[0].day.maxtemp_c.toInt()}°  L:${data.forecast.forecastday[0].day.mintemp_c.toInt()}°",
+            text = "H:${data.forecast[0].maxTempC.toInt()}°  L:${data.forecast[0].minTempC.toInt()}°",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -230,21 +229,21 @@ fun WeatherHeader(data: ForecastResponse) {
 }
 
 @Composable
-fun TelemetrySection(data: ForecastResponse) {
+fun TelemetrySection(data: WeatherReport) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TelemetryCard(
                 modifier = Modifier.weight(1f),
                 icon = R.drawable.rainy,
                 label = stringResource(R.string.precipitation),
-                value = "${data.current.precip_mm} mm"
+                value = "${data.current.precipMm} mm"
             )
             TelemetryCard(
                 modifier = Modifier.weight(1f),
                 icon = R.drawable.air,
                 label = stringResource(R.string.wind),
-                value = "${data.current.wind_kph} kph",
-                extra = data.current.wind_dir
+                value = "${data.current.windKph} kph",
+                extra = data.current.windDir
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -258,7 +257,7 @@ fun TelemetrySection(data: ForecastResponse) {
                 modifier = Modifier.weight(1f),
                 icon = R.drawable.sunny,
                 label = stringResource(R.string.sun),
-                value = "↑ ${data.forecast.forecastday[0].astro.sunrise}\n↓ ${data.forecast.forecastday[0].astro.sunset}"
+                value = "↑ ${data.forecast[0].sunrise}\n↓ ${data.forecast[0].sunset}"
             )
         }
     }
@@ -320,7 +319,7 @@ fun TelemetryCard(
 }
 
 @Composable
-fun HourlySection(condition: String, hourly: List<Hour>) {
+fun HourlySection(condition: String, hourly: List<HourlyWeather>) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -341,7 +340,7 @@ fun HourlySection(condition: String, hourly: List<Hour>) {
             val currentTimeEpoch = (System.currentTimeMillis() / 1000).toInt()
             val next12HoursEpoch = currentTimeEpoch + (12 * 3600) // 12 hours in seconds
             val filteredHourly =
-                hourly.filter { it.time_epoch in currentTimeEpoch..next12HoursEpoch }
+                hourly.filter { it.timeEpoch in currentTimeEpoch..next12HoursEpoch }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -355,7 +354,7 @@ fun HourlySection(condition: String, hourly: List<Hour>) {
 }
 
 @Composable
-fun HourlyItem(hour: Hour) {
+fun HourlyItem(hour: HourlyWeather) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = hour.time.split(" ")[1],
@@ -371,7 +370,7 @@ fun HourlyItem(hour: Hour) {
             )
         }
         Text(
-            text = "${hour.temp_c.toInt()}°",
+            text = "${hour.tempC.toInt()}°",
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -441,7 +440,7 @@ fun ForecastDayItem(day: ForecastDay) {
             )
         }
         Text(
-            text = "${day.day.maxtemp_c.toInt()}° / ${day.day.mintemp_c.toInt()}°",
+            text = "${day.maxTempC.toInt()}° / ${day.minTempC.toInt()}°",
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.End,
             color = MaterialTheme.colorScheme.onSurface
@@ -450,7 +449,7 @@ fun ForecastDayItem(day: ForecastDay) {
 }
 
 @Composable
-fun AlertsSection(alerts: List<Alert>) {
+fun AlertsSection(alerts: List<WeatherAlert>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -473,7 +472,7 @@ fun AlertsSection(alerts: List<Alert>) {
 }
 
 @Composable
-fun AlertItem(alert: Alert) {
+fun AlertItem(alert: WeatherAlert) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
@@ -485,38 +484,10 @@ fun AlertItem(alert: Alert) {
                 color = MaterialTheme.colorScheme.error
             )
             Text(
-                text = alert.headline ?: "",
+                text = alert.headline,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
     }
-}
-
-@Preview
-@Composable
-fun AlertsSectionPreview() {
-    AlertsSection(
-        alerts = listOf(
-            Alert(
-                event = "Severe Thunderstorm Warning",
-                headline = "A severe thunderstorm has been detected in your area. Seek shelter immediately."
-            ),
-            Alert(
-                event = "Flood Watch",
-                headline = "Heavy rain expected over the next 24 hours. Be prepared for potential flooding."
-            )
-        )
-    )
-}
-
-@Preview
-@Composable
-fun AlertItemPreview() {
-    AlertItem(
-        alert = Alert(
-            event = "Severe Snowstorm Warning",
-            headline = "A severe snowstorm is approaching your area. Please remain indoors."
-        )
-    )
 }

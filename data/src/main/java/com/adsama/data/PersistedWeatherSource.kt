@@ -1,9 +1,9 @@
 package com.adsama.data
 
-import com.adsama.database.PersistedWeatherModel
 import com.adsama.database.WeatherLocationDAO
-import com.adsama.model.AppError
-import com.adsama.model.Result
+import com.adsama.domain.model.DomainError
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -12,14 +12,16 @@ import javax.inject.Inject
 
 class PersistedWeatherSource @Inject constructor(private val weatherLocationDAO: WeatherLocationDAO) {
 
-    fun fetchSavedLocations(): Flow<Result<List<PersistedWeatherModel>>> {
+    fun fetchSavedLocations(): Flow<Result<List<WeatherLocation>>> {
         return weatherLocationDAO.getAllSavedLocations()
-            .map { Result.Success(it) as Result<List<PersistedWeatherModel>> }
+            .map { list ->
+                Result.Success(list.map { it.toDomain() }) as Result<List<WeatherLocation>>
+            }
             .onStart { emit(Result.Loading()) }
             .catch { e ->
                 emit(
                     Result.Error(
-                        AppError.DatabaseError(
+                        DomainError.DatabaseError(
                             e.message ?: "Failed to fetch saved locations"
                         )
                     )
@@ -27,21 +29,21 @@ class PersistedWeatherSource @Inject constructor(private val weatherLocationDAO:
             }
     }
 
-    suspend fun saveLocation(persistedWeatherModel: PersistedWeatherModel): Result<Unit> {
+    suspend fun saveLocation(location: WeatherLocation): Result<Unit> {
         return try {
-            weatherLocationDAO.insertLocationInfo(persistedWeatherModel)
+            weatherLocationDAO.insertLocationInfo(location.toEntity())
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to save location"))
+            Result.Error(DomainError.DatabaseError(e.message ?: "Failed to save location"))
         }
     }
 
-    suspend fun deleteLocation(persistedWeatherModel: PersistedWeatherModel): Result<Unit> {
+    suspend fun deleteLocation(location: WeatherLocation): Result<Unit> {
         return try {
-            weatherLocationDAO.deleteLocationInfo(persistedWeatherModel)
+            weatherLocationDAO.deleteLocationInfo(location.toEntity())
             Result.Success(Unit)
         } catch (e: Exception) {
-            Result.Error(AppError.DatabaseError(e.message ?: "Failed to delete location"))
+            Result.Error(DomainError.DatabaseError(e.message ?: "Failed to delete location"))
         }
     }
 

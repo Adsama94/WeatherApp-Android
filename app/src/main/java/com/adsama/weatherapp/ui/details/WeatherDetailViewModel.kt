@@ -2,14 +2,11 @@ package com.adsama.weatherapp.ui.details
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.adsama.database.PersistedWeatherModel
 import com.adsama.domain.DeleteLocationUseCase
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
-import com.adsama.model.AppError
-import com.adsama.model.ForecastResponse
-import com.adsama.model.Result
+import com.adsama.domain.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,26 +36,26 @@ class WeatherDetailViewModel @Inject constructor(
             when (result) {
                 is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
-                    val forecast = result.data
-                    val allHours = forecast.forecast.forecastday.take(2).flatMap { it.hour }
+                    val report = result.data
+                    val allHours = report.forecast.take(2).flatMap { it.hourly }
 
                     _uiState.update {
                         it.copy(
-                            forecast = forecast,
+                            forecast = report,
                             hourlyForecast = allHours,
-                            fiveDayForecast = forecast.forecast.forecastday,
-                            alerts = forecast.alerts.alert,
+                            fiveDayForecast = report.forecast,
+                            alerts = report.alerts,
                             isLoading = false
                         )
                     }
-                    checkIfLocationIsSaved(forecast.location.name ?: "")
+                    checkIfLocationIsSaved(report.location.name)
                 }
 
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = AppError.NetworkError(result.getErrorMessage())
+                            error = result.error
                         )
                     }
                 }
@@ -68,8 +65,7 @@ class WeatherDetailViewModel @Inject constructor(
 
     fun saveLocationData() {
         val forecast = _uiState.value.forecast ?: return
-        val persistedModel = buildPersistedData(forecast)
-        saveLocationUseCase(persistedModel).onEach { result ->
+        saveLocationUseCase(forecast.location).onEach { result ->
             when (result) {
                 is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
@@ -81,7 +77,7 @@ class WeatherDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = AppError.NetworkError(result.getErrorMessage())
+                            error = result.error
                         )
                     }
                 }
@@ -105,7 +101,7 @@ class WeatherDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = AppError.DatabaseError(result.getErrorMessage())
+                            error = result.error
                         )
                     }
                 }
@@ -134,27 +130,11 @@ class WeatherDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            error = AppError.DatabaseError(result.getErrorMessage())
+                            error = result.error
                         )
                     }
                 }
             }
         }.launchIn(viewModelScope)
     }
-
-    private fun buildPersistedData(forecastResponse: ForecastResponse): PersistedWeatherModel {
-        return PersistedWeatherModel(
-            0,
-            forecastResponse.location.lat,
-            forecastResponse.location.lon,
-            forecastResponse.location.name ?: "",
-            forecastResponse.location.region ?: "",
-            forecastResponse.location.country ?: "",
-            forecastResponse.current.temp_c,
-            forecastResponse.current.condition.text,
-            forecastResponse.current.condition.icon,
-            forecastResponse.forecast.forecastday[0].date
-        )
-    }
-
 }
