@@ -7,10 +7,8 @@ import com.adsama.domain.DeleteLocationUseCase
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
-import com.adsama.model.Alert
-import com.adsama.model.ForecastDay
+import com.adsama.model.AppError
 import com.adsama.model.ForecastResponse
-import com.adsama.model.Hour
 import com.adsama.model.Result
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
 @HiltViewModel
@@ -28,29 +27,8 @@ class WeatherDetailViewModel @Inject constructor(
     private val deleteLocationUseCase: DeleteLocationUseCase
 ) : ViewModel() {
 
-    private val _forecastResponse = MutableStateFlow<ForecastResponse?>(null)
-    val forecastResponse: StateFlow<ForecastResponse?> = _forecastResponse.asStateFlow()
-
-    private val _hourlyResponse = MutableStateFlow<List<Hour>>(emptyList())
-    val hourlyResponse: StateFlow<List<Hour>> = _hourlyResponse.asStateFlow()
-
-    private val _fiveDayForecastResponse = MutableStateFlow<List<ForecastDay>>(emptyList())
-    val fiveDayForecastResponse: StateFlow<List<ForecastDay>> =
-        _fiveDayForecastResponse.asStateFlow()
-
-    private val _alertsResponse = MutableStateFlow<List<Alert>>(emptyList())
-    val alertsResponse: StateFlow<List<Alert>> = _alertsResponse.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    private val _showProgressBar = MutableStateFlow(false)
-    val showProgressBar: StateFlow<Boolean> = _showProgressBar.asStateFlow()
-
-    private var mPersistedDataList: List<PersistedWeatherModel> = emptyList()
-
-    private val _isPersisted = MutableStateFlow(false)
-    val isPersisted: StateFlow<Boolean> = _isPersisted.asStateFlow()
+    private val _uiState = MutableStateFlow(DetailUiState())
+    val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
     init {
         getAllSavedLocations()
@@ -59,39 +37,53 @@ class WeatherDetailViewModel @Inject constructor(
     fun getForecastData(location: String) {
         fetchCurrentWeatherUseCase(location).onEach { result ->
             when (result) {
-                is Result.Loading -> _showProgressBar.value = true
+                is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
-                    _showProgressBar.value = false
                     val forecast = result.data
-                    _forecastResponse.value = forecast
-                    _hourlyResponse.value = forecast.forecast.forecastday[0].hour
-                    _fiveDayForecastResponse.value = forecast.forecast.forecastday
-                    _alertsResponse.value = forecast.alerts.alert
+                    val allHours = forecast.forecast.forecastday.take(2).flatMap { it.hour }
+
+                    _uiState.update {
+                        it.copy(
+                            forecast = forecast,
+                            hourlyForecast = allHours,
+                            fiveDayForecast = forecast.forecast.forecastday,
+                            alerts = forecast.alerts.alert,
+                            isLoading = false
+                        )
+                    }
                     checkIfLocationIsSaved(forecast.location.name ?: "")
                 }
 
                 is Result.Error -> {
-                    _showProgressBar.value = false
-                    _errorMessage.value = result.getErrorMessage()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = AppError.NetworkError(result.getErrorMessage())
+                        )
+                    }
                 }
             }
         }.launchIn(viewModelScope)
     }
 
     fun saveLocationData() {
-        val forecast = _forecastResponse.value ?: return
+        val forecast = _uiState.value.forecast ?: return
         val persistedModel = buildPersistedData(forecast)
         saveLocationUseCase(persistedModel).onEach { result ->
             when (result) {
-                is Result.Loading -> _showProgressBar.value = true
+                is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
-                    _showProgressBar.value = false
+                    _uiState.update { it.copy(isLoading = false) }
                     getAllSavedLocations()
                 }
 
                 is Result.Error -> {
-                    _showProgressBar.value = false
-                    _errorMessage.value = result.getErrorMessage()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = AppError.NetworkError(result.getErrorMessage())
+                        )
+                    }
                 }
             }
         }.launchIn(viewModelScope)
@@ -100,40 +92,51 @@ class WeatherDetailViewModel @Inject constructor(
     private fun getAllSavedLocations() {
         getSavedLocationUseCase(Unit).onEach { result ->
             when (result) {
-                is Result.Loading -> {}
+                is Result.Loading -> {
+                    _uiState.update { it.copy(isLoading = true) }
+                }
+
                 is Result.Success -> {
-                    mPersistedDataList = result.data
-                    _forecastResponse.value?.location?.name?.let { name ->
-                        checkIfLocationIsSaved(name)
-                    }
+                    _uiState.update { it.copy(isLoading = false, persistedDataList = result.data) }
+                    checkIfLocationIsSaved(_uiState.value.forecast?.location?.name ?: "")
                 }
 
                 is Result.Error -> {
-                    _errorMessage.value = result.getErrorMessage()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = AppError.DatabaseError(result.getErrorMessage())
+                        )
+                    }
                 }
             }
         }.launchIn(viewModelScope)
     }
 
     private fun checkIfLocationIsSaved(locationName: String) {
-        _isPersisted.value = mPersistedDataList.any { it.name == locationName }
+        _uiState.update { state -> state.copy(isPersisted = _uiState.value.persistedDataList.any { it.name == locationName }) }
     }
 
     fun removeLocationFromSaved() {
-        val locationName = _forecastResponse.value?.location?.name ?: return
-        val locationToDelete = mPersistedDataList.find { it.name == locationName } ?: return
+        val locationName = _uiState.value.forecast?.location?.name ?: return
+        val locationToDelete =
+            _uiState.value.persistedDataList.find { it.name == locationName } ?: return
 
         deleteLocationUseCase(locationToDelete).onEach { result ->
             when (result) {
-                is Result.Loading -> _showProgressBar.value = true
+                is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
-                    _showProgressBar.value = false
+                    _uiState.update { it.copy(isLoading = false) }
                     getAllSavedLocations()
                 }
 
                 is Result.Error -> {
-                    _showProgressBar.value = false
-                    _errorMessage.value = result.getErrorMessage()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = AppError.DatabaseError(result.getErrorMessage())
+                        )
+                    }
                 }
             }
         }.launchIn(viewModelScope)
@@ -152,10 +155,6 @@ class WeatherDetailViewModel @Inject constructor(
             forecastResponse.current.condition.icon,
             forecastResponse.forecast.forecastday[0].date
         )
-    }
-
-    fun clearErrorMessage() {
-        _errorMessage.value = null
     }
 
 }

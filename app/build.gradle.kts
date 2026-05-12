@@ -37,6 +37,9 @@ android {
         compose = true
     }
 }
+composeCompiler {
+    stabilityConfigurationFile = layout.projectDirectory.file("compose_compiler_config.conf")
+}
 
 dependencies {
     implementation(project(":domain"))

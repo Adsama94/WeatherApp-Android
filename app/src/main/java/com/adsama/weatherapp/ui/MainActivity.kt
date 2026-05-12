@@ -12,10 +12,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.*
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat.startForegroundService
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -25,6 +29,7 @@ import com.adsama.weatherapp.ui.details.WeatherDetailScreen
 import com.adsama.weatherapp.ui.details.WeatherDetailViewModel
 import com.adsama.weatherapp.ui.home.WeatherHomeScreen
 import com.adsama.weatherapp.ui.home.WeatherHomeViewModel
+import com.adsama.weatherapp.ui.theme.WeatherAppTheme
 import com.adsama.weatherapp.utils.LocationCallbacks
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -59,59 +64,71 @@ class MainActivity : ComponentActivity(), LocationCallbacks {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val navController = rememberNavController()
+            val systemInDarkTheme = isSystemInDarkTheme()
+            var isDarkMode by rememberSaveable { mutableStateOf(systemInDarkTheme) }
 
-            val permissionLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { isGranted ->
-                if (isGranted) {
-                    extractLocation()
-                } else {
-                    Toast.makeText(this, "Location Permission Denied!", Toast.LENGTH_SHORT).show()
-                }
-            }
+            WeatherAppTheme(darkTheme = isDarkMode) {
+                val navController = rememberNavController()
 
-            NavHost(navController = navController, startDestination = "home") {
-                composable("home") {
-                    val viewModel: WeatherHomeViewModel = hiltViewModel()
-
-                    LaunchedEffect(latitudeState, longitudeState) {
-                        val lat = latitudeState
-                        val lon = longitudeState
-                        if (lat != null && lon != null) {
-                            viewModel.setLocationFromGps(lat, lon)
-                            latitudeState = null
-                            longitudeState = null
-                        }
+                val permissionLauncher = rememberLauncherForActivityResult(
+                    ActivityResultContracts.RequestPermission()
+                ) { isGranted ->
+                    if (isGranted) {
+                        extractLocation()
+                    } else {
+                        Toast.makeText(this, "Location Permission Denied!", Toast.LENGTH_SHORT)
+                            .show()
                     }
+                }
 
-                    WeatherHomeScreen(
-                        viewModel = viewModel,
-                        onLocationClick = { locationName ->
-                            navController.navigate("details/$locationName")
-                        },
-                        onCurrentLocationClick = {
-                            if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                                extractLocation()
-                            } else {
-                                permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") {
+                        val viewModel = hiltViewModel<WeatherHomeViewModel>()
+
+                        LaunchedEffect(latitudeState, longitudeState) {
+                            val lat = latitudeState
+                            val lon = longitudeState
+                            if (lat != null && lon != null) {
+                                viewModel.setLocationFromGps(lat, lon)
+                                latitudeState = null
+                                longitudeState = null
                             }
                         }
-                    )
-                }
-                composable(
-                    route = "details/{locationName}",
-                    arguments = listOf(navArgument("locationName") { type = NavType.StringType })
-                ) { backStackEntry ->
-                    val locationName = backStackEntry.arguments?.getString("locationName") ?: ""
-                    val detailViewModel = hiltViewModel<WeatherDetailViewModel>()
-                    WeatherDetailScreen(
-                        locationName = locationName,
-                        viewModel = detailViewModel,
-                        onBack = {
-                            navController.popBackStack()
-                        }
-                    )
+
+                        WeatherHomeScreen(
+                            viewModel = viewModel,
+                            isDarkMode = isDarkMode,
+                            onToggleTheme = { isDarkMode = !isDarkMode },
+                            onLocationClick = { locationName ->
+                                navController.navigate("details/$locationName")
+                            },
+                            onCurrentLocationClick = {
+                                if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                                    extractLocation()
+                                } else {
+                                    permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                                }
+                            }
+                        )
+                    }
+                    composable(
+                        route = "details/{locationName}",
+                        arguments = listOf(navArgument("locationName") {
+                            type = NavType.StringType
+                        })
+                    ) { backStackEntry ->
+                        val locationName = backStackEntry.arguments?.getString("locationName") ?: ""
+                        val detailViewModel = hiltViewModel<WeatherDetailViewModel>()
+                        WeatherDetailScreen(
+                            locationName = locationName,
+                            viewModel = detailViewModel,
+                            isDarkMode = isDarkMode,
+                            onToggleTheme = { isDarkMode = !isDarkMode },
+                            onBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
                 }
             }
         }

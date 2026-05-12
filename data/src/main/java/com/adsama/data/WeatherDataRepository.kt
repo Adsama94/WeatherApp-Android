@@ -5,8 +5,8 @@ import com.adsama.domain.WeatherDataSource
 import com.adsama.model.ForecastResponse
 import com.adsama.model.Result
 import com.adsama.model.SearchResponse
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
-
 
 class WeatherDataRepository @Inject constructor(
     private val persistedWeatherSource: PersistedWeatherSource,
@@ -21,7 +21,7 @@ class WeatherDataRepository @Inject constructor(
         return remoteWeatherSource.getSearchResult(location)
     }
 
-    override suspend fun getAllSavedLocations(): Result<List<PersistedWeatherModel>> {
+    override fun getAllSavedLocations(): Flow<Result<List<PersistedWeatherModel>>> {
         return persistedWeatherSource.fetchSavedLocations()
     }
 

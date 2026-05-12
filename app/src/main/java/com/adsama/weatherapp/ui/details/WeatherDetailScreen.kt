@@ -19,16 +19,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +42,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,29 +51,49 @@ import com.adsama.model.ForecastDay
 import com.adsama.model.ForecastResponse
 import com.adsama.model.Hour
 import com.adsama.weatherapp.R
+import com.adsama.weatherapp.utils.setDayFromDate
+import com.adsama.weatherapp.utils.setFormattedDate
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WeatherDetailScreen(
     locationName: String,
     viewModel: WeatherDetailViewModel,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit,
     onBack: () -> Unit,
 ) {
-    val forecast by viewModel.forecastResponse.collectAsStateWithLifecycle()
-    val hourly by viewModel.hourlyResponse.collectAsStateWithLifecycle()
-    val fiveDayForecast by viewModel.fiveDayForecastResponse.collectAsStateWithLifecycle()
-    val alerts by viewModel.alertsResponse.collectAsStateWithLifecycle()
-    val isPersisted by viewModel.isPersisted.collectAsStateWithLifecycle()
-    val isLoading by viewModel.showProgressBar.collectAsStateWithLifecycle()
+    val detailUiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(locationName) {
         viewModel.getForecastData(locationName)
     }
 
+    WeatherDetailScreen(
+        uiState = detailUiState,
+        isDarkMode = isDarkMode,
+        onToggleTheme = onToggleTheme,
+        onBack = onBack,
+        onSaveLocation = viewModel::saveLocationData,
+        onRemoveLocation = viewModel::removeLocationFromSaved
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WeatherDetailScreen(
+    uiState: DetailUiState,
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit,
+    onBack: () -> Unit,
+    onSaveLocation: () -> Unit,
+    onRemoveLocation: () -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = forecast?.location?.name ?: "") },
+                title = { Text(text = uiState.forecast?.location?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -76,17 +103,39 @@ fun WeatherDetailScreen(
                     }
                 },
                 actions = {
-                    if (forecast != null) {
+                    if (uiState.forecast != null) {
                         IconButton(onClick = {
-                            if (isPersisted) viewModel.removeLocationFromSaved()
-                            else viewModel.saveLocationData()
+                            if (uiState.isPersisted) onRemoveLocation()
+                            else onSaveLocation()
                         }) {
                             Icon(
                                 painter = painterResource(
-                                    if (isPersisted) R.drawable.bookmark_remove
+                                    if (uiState.isPersisted) R.drawable.bookmark_remove
                                     else R.drawable.bookmark_add
                                 ),
-                                contentDescription = if (isPersisted) "Saved" else "Save"
+                                contentDescription = if (uiState.isPersisted) "Saved" else "Save"
+                            )
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                painter = if (isDarkMode) painterResource(R.drawable.dark_mode) else painterResource(
+                                    R.drawable.light_mode
+                                ),
+                                contentDescription = "Menu"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text(if (isDarkMode) "Light Mode" else "Dark Mode") },
+                                onClick = {
+                                    onToggleTheme()
+                                    showMenu = false
+                                }
                             )
                         }
                     }
@@ -99,16 +148,14 @@ fun WeatherDetailScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            if (isLoading && forecast == null) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            if (uiState.isLoading && uiState.forecast == null) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.primary
+                )
             } else {
-                forecast?.let { data ->
-                    WeatherDetailContent(
-                        data = data,
-                        hourly = hourly,
-                        fiveDayForecast = fiveDayForecast,
-                        alerts = alerts
-                    )
+                uiState.forecast?.let {
+                    WeatherDetailContent(uiState = uiState)
                 }
             }
         }
@@ -117,11 +164,9 @@ fun WeatherDetailScreen(
 
 @Composable
 fun WeatherDetailContent(
-    data: ForecastResponse,
-    hourly: List<Hour>,
-    fiveDayForecast: List<ForecastDay>,
-    alerts: List<Alert>
+    uiState: DetailUiState
 ) {
+    val data = uiState.forecast ?: return
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -134,14 +179,14 @@ fun WeatherDetailContent(
             TelemetrySection(data)
         }
         item {
-            HourlySection(data.current.condition.text, hourly)
+            HourlySection(data.current.condition.text, uiState.hourlyForecast)
         }
         item {
-            FiveDayForecastSection(fiveDayForecast)
+            FiveDayForecastSection(uiState.fiveDayForecast)
         }
-        if (alerts.isNotEmpty()) {
+        if (uiState.alerts.isNotEmpty()) {
             item {
-                AlertsSection(alerts)
+                AlertsSection(uiState.alerts)
             }
         }
     }
@@ -168,16 +213,18 @@ fun WeatherHeader(data: ForecastResponse) {
         Text(
             text = "${data.current.temp_c.toInt()}°",
             fontSize = 64.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
         Text(
             text = data.current.condition.text,
             fontSize = 20.sp,
-            color = Color.Gray
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         Text(
             text = "H:${data.forecast.forecastday[0].day.maxtemp_c.toInt()}°  L:${data.forecast.forecastday[0].day.mintemp_c.toInt()}°",
-            fontSize = 16.sp
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onBackground
         )
     }
 }
@@ -227,7 +274,9 @@ fun TelemetryCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF9EE)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -236,10 +285,14 @@ fun TelemetryCard(
                     painter = painterResource(icon),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF364A7D)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Text(text = label, fontSize = 12.sp, color = Color(0xFF364A7D))
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Row(
@@ -247,9 +300,19 @@ fun TelemetryCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = value, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = value,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 if (extra != null) {
-                    Text(text = extra, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                    Text(
+                        text = extra,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
                 }
             }
         }
@@ -259,21 +322,26 @@ fun TelemetryCard(
 @Composable
 fun HourlySection(condition: String, hourly: List<Hour>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(vertical = 12.dp)) {
             Text(
                 text = condition,
                 modifier = Modifier.padding(horizontal = 12.dp),
-                fontSize = 14.sp
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
-                color = Color(0xFFEFEFEF)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
-            val currentTimeEpoch = System.currentTimeMillis() / 1000
-            val filteredHourly = hourly.filter { it.time_epoch >= currentTimeEpoch }
+            val currentTimeEpoch = (System.currentTimeMillis() / 1000).toInt()
+            val next12HoursEpoch = currentTimeEpoch + (12 * 3600) // 12 hours in seconds
+            val filteredHourly =
+                hourly.filter { it.time_epoch in currentTimeEpoch..next12HoursEpoch }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -289,7 +357,11 @@ fun HourlySection(condition: String, hourly: List<Hour>) {
 @Composable
 fun HourlyItem(hour: Hour) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = hour.time.split(" ")[1], fontSize = 12.sp)
+        Text(
+            text = hour.time.split(" ")[1],
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
             Icon(
                 painterResource(R.drawable.cloud_sun_rain),
@@ -298,14 +370,20 @@ fun HourlyItem(hour: Hour) {
                 tint = Color.Unspecified
             )
         }
-        Text(text = "${hour.temp_c.toInt()}°", fontWeight = FontWeight.Bold)
+        Text(
+            text = "${hour.temp_c.toInt()}°",
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
 @Composable
 fun FiveDayForecastSection(forecast: List<ForecastDay>) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5)),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -314,14 +392,14 @@ fun FiveDayForecastSection(forecast: List<ForecastDay>) {
                     painter = painterResource(R.drawable.calendar_forecast),
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF364A7D)
+                    tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = stringResource(R.string.five_day_forecast),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF364A7D)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -341,7 +419,19 @@ fun ForecastDayItem(day: ForecastDay) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = day.date, modifier = Modifier.weight(1f))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = setDayFromDate(day.date),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            Text(
+                text = setFormattedDate(day.date) ?: "",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
         Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
             Icon(
                 painterResource(R.drawable.cloud_sun_rain),
@@ -353,7 +443,8 @@ fun ForecastDayItem(day: ForecastDay) {
         Text(
             text = "${day.day.maxtemp_c.toInt()}° / ${day.day.mintemp_c.toInt()}°",
             modifier = Modifier.weight(1f),
-            textAlign = TextAlign.End
+            textAlign = TextAlign.End,
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -366,13 +457,13 @@ fun AlertsSection(alerts: List<Alert>) {
                 painter = painterResource(R.drawable.notifications),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = Color(0xFF364A7D)
+                tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = stringResource(R.string.alerts),
                 fontSize = 14.sp,
-                color = Color(0xFF364A7D)
+                color = MaterialTheme.colorScheme.primary
             )
         }
         alerts.forEach { alert ->
@@ -385,11 +476,47 @@ fun AlertsSection(alerts: List<Alert>) {
 fun AlertItem(alert: Alert) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(text = alert.event ?: "Alert", fontWeight = FontWeight.Bold, color = Color.Red)
-            Text(text = alert.headline ?: "", fontSize = 12.sp)
+            Text(
+                text = alert.event ?: "Alert",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = alert.headline ?: "",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
         }
     }
+}
+
+@Preview
+@Composable
+fun AlertsSectionPreview() {
+    AlertsSection(
+        alerts = listOf(
+            Alert(
+                event = "Severe Thunderstorm Warning",
+                headline = "A severe thunderstorm has been detected in your area. Seek shelter immediately."
+            ),
+            Alert(
+                event = "Flood Watch",
+                headline = "Heavy rain expected over the next 24 hours. Be prepared for potential flooding."
+            )
+        )
+    )
+}
+
+@Preview
+@Composable
+fun AlertItemPreview() {
+    AlertItem(
+        alert = Alert(
+            event = "Severe Snowstorm Warning",
+            headline = "A severe snowstorm is approaching your area. Please remain indoors."
+        )
+    )
 }

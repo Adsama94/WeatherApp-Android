@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface WeatherLocationDAO {
@@ -13,7 +14,7 @@ interface WeatherLocationDAO {
     suspend fun insertLocationInfo(persistedWeatherModel: PersistedWeatherModel)
 
     @Query("SELECT * FROM `PersistedWeatherModel`")
-    suspend fun getAllSavedLocations(): List<PersistedWeatherModel>
+    fun getAllSavedLocations(): Flow<List<PersistedWeatherModel>>
 
     @Delete
     suspend fun deleteLocationInfo(persistedWeatherModel: PersistedWeatherModel)
