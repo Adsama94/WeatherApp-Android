@@ -2,23 +2,21 @@ package com.adsama.network
 
 import com.adsama.model.ForecastResponse
 import com.adsama.model.SearchResponse
-import kotlinx.coroutines.Deferred
-import retrofit2.Response
+import com.adsama.model.WeatherErrorResponse
+import com.adsama.network.adapter.NetworkResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
 interface WeatherService {
 
     @GET("forecast.json?days=5&alerts=yes")
-    fun getForecastAsync(
-        @Query("key") key: String,
+    suspend fun getForecast(
         @Query("q") location: String
-    ): Deferred<Response<ForecastResponse>>
+    ): NetworkResponse<ForecastResponse, WeatherErrorResponse>
 
-    @GET("search.json?")
-    fun getSearchResultsAsync(
-        @Query("key") key: String,
+    @GET("search.json")
+    suspend fun getSearchResults(
         @Query("q") location: String
-    ): Deferred<Response<List<SearchResponse>>>
+    ): NetworkResponse<List<SearchResponse>, WeatherErrorResponse>
 
 }

@@ -1,10 +1,9 @@
 package com.adsama.model
 
-data class WeatherErrorResponse(
-    val error: Error
-)
+import kotlinx.serialization.Serializable
 
-data class Error(
-    val code: Int? = 0,
-    val message: String? = "Error"
-)
+@Serializable
+data class WeatherErrorResponse(val error: Error)
+
+@Serializable
+data class Error(val code: Int, val message: String)

@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.dagger.hilt) apply false
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.kotlin.parcelize) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
 }
 
 extra["compileSdk"] = libs.versions.compileSdk.get().toInt()
