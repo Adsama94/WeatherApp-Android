@@ -218,10 +218,14 @@ fun WeatherHomeContent(
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surface)
                     ) {
-                        item {
+                        item(contentType = "current_location") {
                             CurrentLocationRow(onClick = onCurrentLocationClick)
                         }
-                        itemsIndexed(uiState.searchSuggestions) { _, suggestion ->
+                        items(
+                            items = uiState.searchSuggestions,
+                            key = { "${it.name}_${it.region}_${it.country}" },
+                            contentType = { "search_suggestion" }
+                        ) { suggestion ->
                             SearchSuggestionItem(
                                 suggestion = suggestion,
                                 onClick = { onLocationClick(suggestion.name) }
@@ -229,15 +233,6 @@ fun WeatherHomeContent(
                         }
                     }
                 }
-            }
-
-            if ((uiState.isLocalDataLoading || uiState.isSearchLoading) && !uiState.isSearchActive) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -250,10 +245,11 @@ fun WeatherHomeContent(
                             .padding(top = 10.dp),
                         contentPadding = PaddingValues(vertical = 10.dp)
                     ) {
-                        itemsIndexed(
+                        items(
                             items = uiState.savedLocations,
-                            key = { _, item -> item.id }
-                        ) { index, location ->
+                            key = { it.id },
+                            contentType = { "saved_location" }
+                        ) { location ->
                             val swipeToDismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = {
                                     if (it == SwipeToDismissBoxValue.EndToStart) {
@@ -264,6 +260,7 @@ fun WeatherHomeContent(
                             )
 
                             SwipeToDismissBox(
+                                modifier = Modifier.animateItemPlacement(),
                                 state = swipeToDismissState,
                                 backgroundContent = {
                                     val color = when (swipeToDismissState.dismissDirection) {

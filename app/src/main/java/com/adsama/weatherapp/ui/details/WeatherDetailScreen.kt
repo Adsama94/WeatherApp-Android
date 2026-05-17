@@ -170,20 +170,20 @@ fun WeatherDetailContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
+        item(contentType = "header") {
             WeatherHeader(uiModel)
         }
-        item {
+        item(contentType = "telemetry") {
             TelemetrySection(uiModel)
         }
-        item {
+        item(contentType = "hourly") {
             HourlySection(uiModel.conditionText, uiModel.hourlyForecast)
         }
-        item {
+        item(contentType = "five_day") {
             FiveDayForecastSection(uiModel.dailyForecast)
         }
         if (uiModel.alerts.isNotEmpty()) {
-            item {
+            item(contentType = "alerts") {
                 AlertsSection(uiModel.alerts)
             }
         }
@@ -361,7 +361,11 @@ fun HourlySection(condition: String, hourly: List<HourlyForecastUiModel>) {
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(filteredHourly) { hour ->
+                items(
+                    items = filteredHourly,
+                    key = { it.timeEpoch },
+                    contentType = { "hourly_forecast" }
+                ) { hour ->
                     HourlyItem(hour)
                 }
             }
