@@ -13,6 +13,7 @@ import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
 import com.adsama.weatherapp.ui.mapper.toUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -72,7 +74,7 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update { it.copy(isLocalDataLoading = false, error = result.error) }
                 }
             }
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun searchLocation(location: String) {
@@ -96,11 +98,11 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update { it.copy(isSearchLoading = false, error = result.error) }
                 }
             }
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun removeLocationFromSaved(locationId: Long) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLocalDataLoading = true) }
 
             // Temporary reconstruction for deletion logic
@@ -140,7 +142,7 @@ class WeatherHomeViewModel @Inject constructor(
     }
 
     fun fetchLocation() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isSearchLoading = true) }
             when (val result = fetchCurrentLocationUseCase()) {
                 is Result.Success -> {
@@ -161,33 +163,29 @@ class WeatherHomeViewModel @Inject constructor(
     }
 
     fun refreshWeatherForLocation(location: WeatherLocation) {
-        updateItemLoadingState(location.id, true)
+        _uiState.update { it.copy(refreshingLocationIds = it.refreshingLocationIds + location.id) }
 
-        fetchCurrentWeatherUseCase(FetchCurrentWeatherUseCase.Params(location.name, forceRefresh = true)).onEach { result ->
+        fetchCurrentWeatherUseCase(
+            FetchCurrentWeatherUseCase.Params(
+                location.name,
+                forceRefresh = true
+            )
+        ).onEach { result ->
             when (result) {
                 is Result.Loading -> {}
                 is Result.Success -> {
-                    // We don't manually update the UI here anymore.
-                    // The repository has already updated the database, which will trigger 
-                    // observeSavedLocations and update the UI with the fresh data automatically.
-                    // This prevents ID mismatches and race conditions.
+                    _uiState.update { it.copy(refreshingLocationIds = it.refreshingLocationIds - location.id) }
                 }
 
                 is Result.Error -> {
-                    updateItemLoadingState(location.id, false)
-                    _uiState.update { it.copy(error = result.error) }
+                    _uiState.update { 
+                        it.copy(
+                            refreshingLocationIds = it.refreshingLocationIds - location.id,
+                            error = result.error
+                        ) 
+                    }
                 }
             }
-        }.launchIn(viewModelScope)
-    }
-
-    private fun updateItemLoadingState(id: Long, isLoading: Boolean) {
-        _uiState.update { state ->
-            state.copy(
-                savedLocations = state.savedLocations.map { item ->
-                    if (item.id == id) item.copy(isRefreshing = isLoading) else item
-                }
-            )
-        }
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 }

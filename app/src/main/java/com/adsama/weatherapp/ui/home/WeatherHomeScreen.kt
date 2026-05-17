@@ -2,6 +2,7 @@ package com.adsama.weatherapp.ui.home
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,10 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,12 +33,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.adsama.weatherapp.R
 import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
 
@@ -82,9 +80,6 @@ fun WeatherHomeScreen(
         onCurrentLocationClick = {
             viewModel.updateSearchActive(false)
             onCurrentLocationClick()
-        },
-        onDeleteLocation = { locationId ->
-            viewModel.removeLocationFromSaved(locationId)
         }
     )
 }
@@ -97,8 +92,7 @@ fun WeatherHomeScreen(
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
-    onCurrentLocationClick: () -> Unit,
-    onDeleteLocation: (Long) -> Unit
+    onCurrentLocationClick: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -116,12 +110,11 @@ fun WeatherHomeScreen(
         onSearchQueryChange = onSearchQueryChange,
         onSearchActiveChange = onSearchActiveChange,
         onLocationClick = onLocationClick,
-        onCurrentLocationClick = onCurrentLocationClick,
-        onDeleteLocation = onDeleteLocation
+        onCurrentLocationClick = onCurrentLocationClick
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun WeatherHomeContent(
     uiState: HomeUiState,
@@ -130,8 +123,7 @@ fun WeatherHomeContent(
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
-    onCurrentLocationClick: () -> Unit,
-    onDeleteLocation: (Long) -> Unit
+    onCurrentLocationClick: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -235,11 +227,22 @@ fun WeatherHomeContent(
                 }
             }
 
+            if (uiState.refreshingLocationIds.isNotEmpty()) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
+
             Box(modifier = Modifier.fillMaxSize()) {
                 if (uiState.savedLocations.isEmpty()) {
                     WeatherHomeEmptyScreen(modifier = Modifier.align(Alignment.Center))
                 } else {
                     LazyColumn(
+                        state = rememberLazyListState(),
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(top = 10.dp),
@@ -250,44 +253,10 @@ fun WeatherHomeContent(
                             key = { it.id },
                             contentType = { "saved_location" }
                         ) { location ->
-                            val swipeToDismissState = rememberSwipeToDismissBoxState(
-                                confirmValueChange = {
-                                    if (it == SwipeToDismissBoxValue.EndToStart) {
-                                        onDeleteLocation(location.id)
-                                        true
-                                    } else false
-                                }
+                            SavedLocationItem(
+                                location = location,
+                                onClick = { onLocationClick(location.name) }
                             )
-
-                            SwipeToDismissBox(
-                                modifier = Modifier.animateItemPlacement(),
-                                state = swipeToDismissState,
-                                backgroundContent = {
-                                    val color = when (swipeToDismissState.dismissDirection) {
-                                        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
-                                        else -> Color.Transparent
-                                    }
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .background(color)
-                                            .padding(horizontal = 20.dp),
-                                        contentAlignment = Alignment.CenterEnd
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(R.drawable.delete_white),
-                                            contentDescription = "Delete",
-                                            tint = Color.White
-                                        )
-                                    }
-                                },
-                                enableDismissFromStartToEnd = false
-                            ) {
-                                SavedLocationItem(
-                                    location = location,
-                                    onClick = { onLocationClick(location.name) }
-                                )
-                            }
                         }
                     }
                 }
@@ -340,10 +309,11 @@ fun SearchSuggestionItem(suggestion: WeatherLocationUiModel, onClick: () -> Unit
 @Composable
 fun SavedLocationItem(
     location: WeatherLocationUiModel,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
             .clickable(onClick = onClick),
@@ -378,7 +348,10 @@ fun SavedLocationItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
-                    model = location.conditionIcon,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(location.conditionIcon)
+                        .crossfade(false)
+                        .build(),
                     contentDescription = location.conditionText,
                     modifier = Modifier.size(40.dp)
                 )
@@ -387,13 +360,6 @@ fun SavedLocationItem(
                     fontSize = 24.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                if (location.isRefreshing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
             }
         }
     }

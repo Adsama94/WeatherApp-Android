@@ -130,7 +130,7 @@ fun WeatherDetailScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text(if (isDarkMode) "Light Mode" else "Dark Mode") },
+                                text = { Text(if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode") },
                                 onClick = {
                                     onToggleTheme()
                                     showMenu = false

@@ -7,6 +7,7 @@ import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
 @Immutable
 data class HomeUiState(
     val savedLocations: List<WeatherLocationUiModel> = emptyList(),
+    val refreshingLocationIds: Set<Long> = emptySet(),
     val searchSuggestions: List<WeatherLocationUiModel> = emptyList(),
     val searchQuery: String = "",
     val latLong: String = "",

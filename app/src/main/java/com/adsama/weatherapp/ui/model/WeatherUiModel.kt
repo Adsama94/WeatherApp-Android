@@ -10,8 +10,7 @@ data class WeatherLocationUiModel(
     val country: String,
     val temperature: String,
     val conditionText: String,
-    val conditionIcon: String,
-    val isRefreshing: Boolean = false
+    val conditionIcon: String
 )
 
 @Immutable

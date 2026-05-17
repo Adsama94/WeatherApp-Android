@@ -11,10 +11,12 @@ import com.adsama.domain.model.WeatherLocation
 import com.adsama.domain.model.WeatherReport
 import com.adsama.weatherapp.ui.mapper.toDetailUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -46,13 +48,19 @@ class WeatherDetailViewModel @Inject constructor(
                     savedLocations = result.data
                     checkIfLocationIsSaved()
                 }
+
                 else -> {}
             }
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun getForecastData(location: String) {
-        fetchCurrentWeatherUseCase(FetchCurrentWeatherUseCase.Params(location, forceRefresh = false)).onEach { result ->
+        fetchCurrentWeatherUseCase(
+            FetchCurrentWeatherUseCase.Params(
+                location,
+                forceRefresh = false
+            )
+        ).onEach { result ->
             when (result) {
                 is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
@@ -65,6 +73,7 @@ class WeatherDetailViewModel @Inject constructor(
                     }
                     checkIfLocationIsSaved()
                 }
+
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(
@@ -74,21 +83,23 @@ class WeatherDetailViewModel @Inject constructor(
                     }
                 }
             }
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun saveLocationData() {
         val report = currentReport ?: return
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true) }
             saveLocationUseCase(report.location.copy(report = report)).onEach { result ->
                 when (result) {
                     is Result.Success -> {
                         _uiState.update { it.copy(isLoading = false) }
                     }
+
                     is Result.Error -> {
                         _uiState.update { it.copy(isLoading = false, error = result.error) }
                     }
+
                     else -> {}
                 }
             }.collect()
@@ -105,16 +116,18 @@ class WeatherDetailViewModel @Inject constructor(
         val locationName = currentReport?.location?.name ?: return
         val locationToDelete = savedLocations.find { it.name == locationName } ?: return
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isLoading = true) }
             deleteLocationUseCase(locationToDelete).onEach { result ->
                 when (result) {
                     is Result.Success -> {
                         _uiState.update { it.copy(isLoading = false, isPersisted = false) }
                     }
+
                     is Result.Error -> {
                         _uiState.update { it.copy(isLoading = false, error = result.error) }
                     }
+
                     else -> {}
                 }
             }.collect()

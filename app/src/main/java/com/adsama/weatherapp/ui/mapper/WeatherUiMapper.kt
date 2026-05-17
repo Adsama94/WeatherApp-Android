@@ -6,8 +6,7 @@ import com.adsama.weatherapp.utils.setDayFromDate
 import com.adsama.weatherapp.utils.setFormattedDate
 
 fun WeatherLocation.toUiModel(
-    freshReport: WeatherReport? = null,
-    isRefreshing: Boolean = false
+    freshReport: WeatherReport? = null
 ): WeatherLocationUiModel {
     val temp = freshReport?.current?.tempC ?: this.temperature ?: 0.0
     val condition = freshReport?.current?.conditionText ?: this.conditionText ?: ""
@@ -20,8 +19,7 @@ fun WeatherLocation.toUiModel(
         country = country,
         temperature = "${temp.toInt()}°C",
         conditionText = condition,
-        conditionIcon = icon.ensureHttpsPrefix(),
-        isRefreshing = isRefreshing
+        conditionIcon = icon.ensureHttpsPrefix()
     )
 }
 
