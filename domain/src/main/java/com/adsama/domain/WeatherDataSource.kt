@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface WeatherDataSource {
 
-    suspend fun getForecast(location: String): Result<WeatherReport>
+    suspend fun getForecast(location: String, forceRefresh: Boolean = false): Result<WeatherReport>
 
     suspend fun getSearchResult(location: String): Result<List<WeatherLocation>>
 

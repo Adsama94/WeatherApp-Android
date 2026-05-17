@@ -16,6 +16,9 @@ interface WeatherLocationDAO {
     @Query("SELECT * FROM `PersistedWeatherModel`")
     fun getAllSavedLocations(): Flow<List<PersistedWeatherModel>>
 
+    @Query("SELECT * FROM `PersistedWeatherModel`")
+    suspend fun getAllSavedLocationsOnce(): List<PersistedWeatherModel>
+
     @Delete
     suspend fun deleteLocationInfo(persistedWeatherModel: PersistedWeatherModel)
 

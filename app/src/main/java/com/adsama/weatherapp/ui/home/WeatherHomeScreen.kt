@@ -1,5 +1,6 @@
 package com.adsama.weatherapp.ui.home
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -54,9 +55,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.adsama.domain.model.WeatherLocation
-import com.adsama.domain.model.WeatherReport
+import coil.compose.AsyncImage
 import com.adsama.weatherapp.R
+import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
 
 @Composable
 fun WeatherHomeScreen(
@@ -82,7 +83,9 @@ fun WeatherHomeScreen(
             viewModel.updateSearchActive(false)
             onCurrentLocationClick()
         },
-        onDeleteLocation = viewModel::removeLocationFromSaved
+        onDeleteLocation = { locationId ->
+            viewModel.removeLocationFromSaved(locationId)
+        }
     )
 }
 
@@ -95,13 +98,14 @@ fun WeatherHomeScreen(
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
     onCurrentLocationClick: () -> Unit,
-    onDeleteLocation: (Int) -> Unit
+    onDeleteLocation: (Long) -> Unit
 ) {
     val context = LocalContext.current
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
-            Toast.makeText(context, error.message, Toast.LENGTH_SHORT).show()
+            Log.e("WeatherHomeScreen", "Error: ${error.message}")
+            Toast.makeText(context, error.message, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -127,7 +131,7 @@ fun WeatherHomeContent(
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
     onCurrentLocationClick: () -> Unit,
-    onDeleteLocation: (Int) -> Unit
+    onDeleteLocation: (Long) -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -253,7 +257,7 @@ fun WeatherHomeContent(
                             val swipeToDismissState = rememberSwipeToDismissBoxState(
                                 confirmValueChange = {
                                     if (it == SwipeToDismissBoxValue.EndToStart) {
-                                        onDeleteLocation(index)
+                                        onDeleteLocation(location.id)
                                         true
                                     } else false
                                 }
@@ -284,8 +288,6 @@ fun WeatherHomeContent(
                             ) {
                                 SavedLocationItem(
                                     location = location,
-                                    freshWeatherData = uiState.freshWeatherData[location.id],
-                                    isRefreshing = location.id in uiState.refreshingLocationIds,
                                     onClick = { onLocationClick(location.name) }
                                 )
                             }
@@ -322,7 +324,7 @@ fun CurrentLocationRow(onClick: () -> Unit) {
 }
 
 @Composable
-fun SearchSuggestionItem(suggestion: WeatherLocation, onClick: () -> Unit) {
+fun SearchSuggestionItem(suggestion: WeatherLocationUiModel, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,14 +342,9 @@ fun SearchSuggestionItem(suggestion: WeatherLocation, onClick: () -> Unit) {
 
 @Composable
 fun SavedLocationItem(
-    location: WeatherLocation,
-    freshWeatherData: WeatherReport?,
-    isRefreshing: Boolean,
+    location: WeatherLocationUiModel,
     onClick: () -> Unit
 ) {
-    val displayTemp =
-        freshWeatherData?.current?.tempC?.toInt() ?: location.temperature?.toInt() ?: 0
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -383,12 +380,17 @@ fun SavedLocationItem(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                AsyncImage(
+                    model = location.conditionIcon,
+                    contentDescription = location.conditionText,
+                    modifier = Modifier.size(40.dp)
+                )
                 Text(
-                    text = "$displayTemp°C",
+                    text = location.temperature,
                     fontSize = 24.sp,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                if (isRefreshing) {
+                if (location.isRefreshing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,

@@ -2,11 +2,10 @@ plugins {
     alias(libs.plugins.android.library)
     id("com.google.devtools.ksp")
     alias(libs.plugins.dagger.hilt)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
-    namespace = "com.adsama.database"
+    namespace = "com.adsama.location"
     compileSdk = rootProject.extra["compileSdk"] as Int
 
     defaultConfig {
@@ -23,16 +22,10 @@ android {
 
 dependencies {
     implementation(project(":domain"))
-    implementation(project(":data"))
+    implementation(libs.playservices.location)
     
-    implementation(libs.androidx.room.runtime)
-    ksp(libs.androidx.room.compiler)
-    implementation(libs.androidx.room.ktx)
-    implementation(libs.kotlinx.serialization.json)
-
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.android.compiler)
 
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.test.junit)
 }

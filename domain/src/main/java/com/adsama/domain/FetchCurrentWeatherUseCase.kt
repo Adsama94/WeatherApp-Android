@@ -8,13 +8,15 @@ import javax.inject.Inject
 
 class FetchCurrentWeatherUseCase @Inject constructor(
     private val weatherDataSource: WeatherDataSource
-) : ResultFlowUseCase<String, WeatherReport>() {
+) : ResultFlowUseCase<FetchCurrentWeatherUseCase.Params, WeatherReport>() {
 
-    override suspend fun execute(parameters: String): Result<WeatherReport> {
-        if (parameters.isBlank()) {
+    data class Params(val location: String, val forceRefresh: Boolean = false)
+
+    override suspend fun execute(parameters: Params): Result<WeatherReport> {
+        if (parameters.location.isBlank()) {
             return Result.Error(DomainError.ValidationError("Location cannot be empty or blank"))
         }
-        return weatherDataSource.getForecast(parameters)
+        return weatherDataSource.getForecast(parameters.location, parameters.forceRefresh)
     }
 
 }

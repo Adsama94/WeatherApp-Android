@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     id("com.google.devtools.ksp")
 }
 
@@ -47,6 +48,7 @@ dependencies {
     implementation(project(":database"))
     implementation(project(":model"))
     implementation(project(":network"))
+    implementation(project(":location"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -58,11 +60,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.google.material)
-    implementation(libs.playservices.location)
-    implementation(libs.glide)
+    implementation(libs.coil.compose)
 
     implementation(libs.dagger.hilt.android)
     implementation(libs.androidx.constraintlayout)

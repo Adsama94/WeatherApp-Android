@@ -3,9 +3,11 @@ package com.adsama.weatherapp.ui.details
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -37,7 +39,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -45,13 +46,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.adsama.domain.model.ForecastDay
-import com.adsama.domain.model.HourlyWeather
-import com.adsama.domain.model.WeatherAlert
-import com.adsama.domain.model.WeatherReport
+import coil.compose.AsyncImage
 import com.adsama.weatherapp.R
-import com.adsama.weatherapp.utils.setDayFromDate
-import com.adsama.weatherapp.utils.setFormattedDate
+import com.adsama.weatherapp.ui.model.AlertUiModel
+import com.adsama.weatherapp.ui.model.DailyForecastUiModel
+import com.adsama.weatherapp.ui.model.HourlyForecastUiModel
+import com.adsama.weatherapp.ui.model.WeatherDetailUiModel
 
 @Composable
 fun WeatherDetailScreen(
@@ -92,7 +92,7 @@ fun WeatherDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(text = uiState.forecast?.location?.name ?: "") },
+                title = { Text(text = uiState.weather?.locationName ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -102,7 +102,7 @@ fun WeatherDetailScreen(
                     }
                 },
                 actions = {
-                    if (uiState.forecast != null) {
+                    if (uiState.weather != null) {
                         IconButton(onClick = {
                             if (uiState.isPersisted) onRemoveLocation()
                             else onSaveLocation()
@@ -147,14 +147,14 @@ fun WeatherDetailScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            if (uiState.isLoading && uiState.forecast == null) {
+            if (uiState.isLoading && uiState.weather == null) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center),
                     color = MaterialTheme.colorScheme.primary
                 )
             } else {
-                uiState.forecast?.let {
-                    WeatherDetailContent(uiState = uiState)
+                uiState.weather?.let {
+                    WeatherDetailContent(uiModel = it)
                 }
             }
         }
@@ -163,36 +163,35 @@ fun WeatherDetailScreen(
 
 @Composable
 fun WeatherDetailContent(
-    uiState: DetailUiState
+    uiModel: WeatherDetailUiModel
 ) {
-    val data = uiState.forecast ?: return
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            WeatherHeader(data)
+            WeatherHeader(uiModel)
         }
         item {
-            TelemetrySection(data)
+            TelemetrySection(uiModel)
         }
         item {
-            HourlySection(data.current.conditionText, uiState.hourlyForecast)
+            HourlySection(uiModel.conditionText, uiModel.hourlyForecast)
         }
         item {
-            FiveDayForecastSection(uiState.fiveDayForecast)
+            FiveDayForecastSection(uiModel.dailyForecast)
         }
-        if (uiState.alerts.isNotEmpty()) {
+        if (uiModel.alerts.isNotEmpty()) {
             item {
-                AlertsSection(uiState.alerts)
+                AlertsSection(uiModel.alerts)
             }
         }
     }
 }
 
 @Composable
-fun WeatherHeader(data: WeatherReport) {
+fun WeatherHeader(data: WeatherDetailUiModel) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -202,26 +201,25 @@ fun WeatherHeader(data: WeatherReport) {
                 .size(100.dp)
                 .padding(8.dp), contentAlignment = Alignment.Center
         ) {
-            Icon(
-                painterResource(R.drawable.cloud_sun_rain),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                tint = Color.Unspecified
+            AsyncImage(
+                model = data.conditionIcon,
+                contentDescription = data.conditionText,
+                modifier = Modifier.fillMaxSize()
             )
         }
         Text(
-            text = "${data.current.tempC.toInt()}°",
+            text = data.currentTemp,
             fontSize = 64.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         Text(
-            text = data.current.conditionText,
+            text = data.conditionText,
             fontSize = 20.sp,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
         )
         Text(
-            text = "H:${data.forecast[0].maxTempC.toInt()}°  L:${data.forecast[0].minTempC.toInt()}°",
+            text = data.highLowTemp,
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -229,35 +227,53 @@ fun WeatherHeader(data: WeatherReport) {
 }
 
 @Composable
-fun TelemetrySection(data: WeatherReport) {
+fun TelemetrySection(data: WeatherDetailUiModel) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             TelemetryCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 icon = R.drawable.rainy,
                 label = stringResource(R.string.precipitation),
-                value = "${data.current.precipMm} mm"
+                value = data.precipitation
             )
             TelemetryCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 icon = R.drawable.air,
                 label = stringResource(R.string.wind),
-                value = "${data.current.windKph} kph",
-                extra = data.current.windDir
+                value = data.wind,
+                extra = data.windDir
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             TelemetryCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 icon = R.drawable.outline_wb_sunny,
                 label = stringResource(R.string.uv_index),
-                value = data.current.uv.toString()
+                value = data.uvIndex
             )
             TelemetryCard(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
                 icon = R.drawable.sunny,
                 label = stringResource(R.string.sun),
-                value = "↑ ${data.forecast[0].sunrise}\n↓ ${data.forecast[0].sunset}"
+                value = data.sunTimes
             )
         }
     }
@@ -319,7 +335,7 @@ fun TelemetryCard(
 }
 
 @Composable
-fun HourlySection(condition: String, hourly: List<HourlyWeather>) {
+fun HourlySection(condition: String, hourly: List<HourlyForecastUiModel>) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -354,23 +370,22 @@ fun HourlySection(condition: String, hourly: List<HourlyWeather>) {
 }
 
 @Composable
-fun HourlyItem(hour: HourlyWeather) {
+fun HourlyItem(hour: HourlyForecastUiModel) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = hour.time.split(" ")[1],
+            text = hour.time,
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurface
         )
         Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-            Icon(
-                painterResource(R.drawable.cloud_sun_rain),
+            AsyncImage(
+                model = hour.icon,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                tint = Color.Unspecified
+                modifier = Modifier.fillMaxSize()
             )
         }
         Text(
-            text = "${hour.tempC.toInt()}°",
+            text = hour.temp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -378,7 +393,7 @@ fun HourlyItem(hour: HourlyWeather) {
 }
 
 @Composable
-fun FiveDayForecastSection(forecast: List<ForecastDay>) {
+fun FiveDayForecastSection(forecast: List<DailyForecastUiModel>) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -410,7 +425,7 @@ fun FiveDayForecastSection(forecast: List<ForecastDay>) {
 }
 
 @Composable
-fun ForecastDayItem(day: ForecastDay) {
+fun ForecastDayItem(day: DailyForecastUiModel) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -420,27 +435,26 @@ fun ForecastDayItem(day: ForecastDay) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = setDayFromDate(day.date),
+                text = day.day,
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
             Text(
-                text = setFormattedDate(day.date) ?: "",
+                text = day.date,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
         Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-            Icon(
-                painterResource(R.drawable.cloud_sun_rain),
+            AsyncImage(
+                model = day.icon,
                 contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                tint = Color.Unspecified
+                modifier = Modifier.fillMaxSize()
             )
         }
         Text(
-            text = "${day.maxTempC.toInt()}° / ${day.minTempC.toInt()}°",
+            text = day.highLowTemp,
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.End,
             color = MaterialTheme.colorScheme.onSurface
@@ -449,7 +463,7 @@ fun ForecastDayItem(day: ForecastDay) {
 }
 
 @Composable
-fun AlertsSection(alerts: List<WeatherAlert>) {
+fun AlertsSection(alerts: List<AlertUiModel>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
@@ -472,14 +486,14 @@ fun AlertsSection(alerts: List<WeatherAlert>) {
 }
 
 @Composable
-fun AlertItem(alert: WeatherAlert) {
+fun AlertItem(alert: AlertUiModel) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = alert.event ?: "Alert",
+                text = alert.event,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
             )

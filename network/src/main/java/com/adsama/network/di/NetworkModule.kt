@@ -75,3 +75,11 @@ object NetworkModule {
     }
 
 }
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DataSourceModule {
+    @dagger.Binds
+    @Singleton
+    abstract fun bindRemoteWeatherDataSource(remoteWeatherDataSourceImpl: com.adsama.network.RemoteWeatherDataSourceImpl): com.adsama.data.RemoteWeatherDataSource
+}

@@ -7,13 +7,18 @@ import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
 import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.domain.model.WeatherReport
+import com.adsama.weatherapp.ui.mapper.toDetailUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,30 +32,39 @@ class WeatherDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(DetailUiState())
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
 
+    private var currentReport: WeatherReport? = null
+    private var savedLocations: List<WeatherLocation> = emptyList()
+
     init {
-        getAllSavedLocations()
+        observeSavedLocations()
+    }
+
+    private fun observeSavedLocations() {
+        getSavedLocationUseCase(Unit).onEach { result ->
+            when (result) {
+                is Result.Success -> {
+                    savedLocations = result.data
+                    checkIfLocationIsSaved()
+                }
+                else -> {}
+            }
+        }.launchIn(viewModelScope)
     }
 
     fun getForecastData(location: String) {
-        fetchCurrentWeatherUseCase(location).onEach { result ->
+        fetchCurrentWeatherUseCase(FetchCurrentWeatherUseCase.Params(location, forceRefresh = false)).onEach { result ->
             when (result) {
                 is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
-                    val report = result.data
-                    val allHours = report.forecast.take(2).flatMap { it.hourly }
-
+                    currentReport = result.data
                     _uiState.update {
                         it.copy(
-                            forecast = report,
-                            hourlyForecast = allHours,
-                            fiveDayForecast = report.forecast,
-                            alerts = report.alerts,
+                            weather = result.data.toDetailUiModel(),
                             isLoading = false
                         )
                     }
-                    checkIfLocationIsSaved(report.location.name)
+                    checkIfLocationIsSaved()
                 }
-
                 is Result.Error -> {
                     _uiState.update {
                         it.copy(
@@ -64,77 +78,46 @@ class WeatherDetailViewModel @Inject constructor(
     }
 
     fun saveLocationData() {
-        val forecast = _uiState.value.forecast ?: return
-        saveLocationUseCase(forecast.location).onEach { result ->
-            when (result) {
-                is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
-                is Result.Success -> {
-                    _uiState.update { it.copy(isLoading = false) }
-                    getAllSavedLocations()
-                }
-
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.error
-                        )
+        val report = currentReport ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            saveLocationUseCase(report.location.copy(report = report)).onEach { result ->
+                when (result) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(isLoading = false) }
                     }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(isLoading = false, error = result.error) }
+                    }
+                    else -> {}
                 }
-            }
-        }.launchIn(viewModelScope)
+            }.collect()
+        }
     }
 
-    private fun getAllSavedLocations() {
-        getSavedLocationUseCase(Unit).onEach { result ->
-            when (result) {
-                is Result.Loading -> {
-                    _uiState.update { it.copy(isLoading = true) }
-                }
-
-                is Result.Success -> {
-                    _uiState.update { it.copy(isLoading = false, persistedDataList = result.data) }
-                    checkIfLocationIsSaved(_uiState.value.forecast?.location?.name ?: "")
-                }
-
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.error
-                        )
-                    }
-                }
-            }
-        }.launchIn(viewModelScope)
-    }
-
-    private fun checkIfLocationIsSaved(locationName: String) {
-        _uiState.update { state -> state.copy(isPersisted = _uiState.value.persistedDataList.any { it.name == locationName }) }
+    private fun checkIfLocationIsSaved() {
+        val locationName = currentReport?.location?.name ?: return
+        val isSaved = savedLocations.any { it.name == locationName }
+        _uiState.update { it.copy(isPersisted = isSaved) }
     }
 
     fun removeLocationFromSaved() {
-        val locationName = _uiState.value.forecast?.location?.name ?: return
-        val locationToDelete =
-            _uiState.value.persistedDataList.find { it.name == locationName } ?: return
+        val locationName = currentReport?.location?.name ?: return
+        val locationToDelete = savedLocations.find { it.name == locationName } ?: return
 
-        deleteLocationUseCase(locationToDelete).onEach { result ->
-            when (result) {
-                is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
-                is Result.Success -> {
-                    _uiState.update { it.copy(isLoading = false) }
-                    getAllSavedLocations()
-                }
-
-                is Result.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = result.error
-                        )
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            deleteLocationUseCase(locationToDelete).onEach { result ->
+                when (result) {
+                    is Result.Success -> {
+                        _uiState.update { it.copy(isLoading = false, isPersisted = false) }
                     }
+                    is Result.Error -> {
+                        _uiState.update { it.copy(isLoading = false, error = result.error) }
+                    }
+                    else -> {}
                 }
-            }
-        }.launchIn(viewModelScope)
+            }.collect()
+        }
     }
 }
