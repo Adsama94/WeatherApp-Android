@@ -1,7 +1,6 @@
 package com.adsama.database.di
 
 import android.app.Application
-import android.content.Context
 import androidx.room.Room
 import com.adsama.database.WeatherDatabase
 import com.adsama.database.WeatherLocationDAO
@@ -30,4 +29,12 @@ object DatabaseModule {
             .databaseBuilder(application, WeatherDatabase::class.java, "weather_db")
             .build()
     }
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class DataSourceModule {
+    @dagger.Binds
+    @Singleton
+    abstract fun bindLocalWeatherDataSource(localWeatherDataSourceImpl: com.adsama.database.LocalWeatherDataSourceImpl): com.adsama.domain.LocalWeatherDataSource
 }

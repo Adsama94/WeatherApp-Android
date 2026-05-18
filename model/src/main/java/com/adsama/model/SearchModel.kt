@@ -2,8 +2,10 @@ package com.adsama.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 
 @Parcelize
+@Serializable
 data class SearchResponse(
     val lat: Double,
     val lon: Double,

@@ -1,0 +1,18 @@
+package com.adsama.weatherapp.di
+
+import com.adsama.data.WeatherDataRepository
+import com.adsama.domain.WeatherDataSource
+import dagger.Binds
+import dagger.Module
+import dagger.hilt.InstallIn
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindWeatherDataSource(weatherDataRepository: WeatherDataRepository): WeatherDataSource
+}

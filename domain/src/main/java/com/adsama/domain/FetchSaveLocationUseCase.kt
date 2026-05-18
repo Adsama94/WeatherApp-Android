@@ -1,16 +1,14 @@
 package com.adsama.domain
 
-import com.adsama.database.PersistedWeatherModel
-import com.adsama.model.Result
-import com.adsama.model.ResultFlowUseCase
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 class FetchSaveLocationUseCase @Inject constructor(
     private val weatherDataSource: WeatherDataSource
-) : ResultFlowUseCase<Unit, List<PersistedWeatherModel>>() {
-
-    override suspend fun execute(parameters: Unit): Result<List<PersistedWeatherModel>> {
+) {
+    operator fun invoke(parameters: Unit): Flow<Result<List<WeatherLocation>>> {
         return weatherDataSource.getAllSavedLocations()
     }
-
 }

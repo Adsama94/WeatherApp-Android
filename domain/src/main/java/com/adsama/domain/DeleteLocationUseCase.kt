@@ -1,18 +1,18 @@
 package com.adsama.domain
 
-import com.adsama.database.PersistedWeatherModel
-import com.adsama.model.AppError
-import com.adsama.model.Result
-import com.adsama.model.ResultFlowUseCase
+import com.adsama.domain.model.DomainError
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.ResultFlowUseCase
+import com.adsama.domain.model.WeatherLocation
 import javax.inject.Inject
 
 class DeleteLocationUseCase @Inject constructor(
     private val weatherDataSource: WeatherDataSource
-) : ResultFlowUseCase<PersistedWeatherModel, Unit>() {
+) : ResultFlowUseCase<WeatherLocation, Unit>() {
 
-    override suspend fun execute(parameters: PersistedWeatherModel): Result<Unit> {
+    override suspend fun execute(parameters: WeatherLocation): Result<Unit> {
         if (parameters.name.isBlank()) {
-            return Result.Error(AppError.ValidationError("Location name cannot be empty"))
+            return Result.Error(DomainError.ValidationError("Location name cannot be empty"))
         }
         return weatherDataSource.deleteLocation(parameters)
     }

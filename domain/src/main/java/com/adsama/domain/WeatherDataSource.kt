@@ -1,20 +1,20 @@
 package com.adsama.domain
 
-import com.adsama.database.PersistedWeatherModel
-import com.adsama.model.ForecastResponse
-import com.adsama.model.Result
-import com.adsama.model.SearchResponse
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.domain.model.WeatherReport
+import kotlinx.coroutines.flow.Flow
 
 interface WeatherDataSource {
 
-    suspend fun getForecast(location: String): Result<ForecastResponse>
+    suspend fun getForecast(location: String, forceRefresh: Boolean = false): Result<WeatherReport>
 
-    suspend fun getSearchResult(location: String): Result<List<SearchResponse>>
+    suspend fun getSearchResult(location: String): Result<List<WeatherLocation>>
 
-    suspend fun getAllSavedLocations(): Result<List<PersistedWeatherModel>>
+    fun getAllSavedLocations(): Flow<Result<List<WeatherLocation>>>
 
-    suspend fun saveLocation(persistedWeatherModel: PersistedWeatherModel): Result<Unit>
+    suspend fun saveLocation(location: WeatherLocation): Result<Unit>
 
-    suspend fun deleteLocation(persistedWeatherModel: PersistedWeatherModel): Result<Unit>
+    suspend fun deleteLocation(location: WeatherLocation): Result<Unit>
 
 }

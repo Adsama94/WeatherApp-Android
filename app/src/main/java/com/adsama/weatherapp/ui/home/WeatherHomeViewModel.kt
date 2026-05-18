@@ -1,111 +1,191 @@
 package com.adsama.weatherapp.ui.home
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.adsama.database.PersistedWeatherModel
 import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.FetchCurrentLocationUseCase
+import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
+import com.adsama.domain.SaveLocationUseCase
 import com.adsama.domain.SearchLocationUseCase
-import com.adsama.model.Result
-import com.adsama.model.SearchResponse
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.weatherapp.ui.mapper.toUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
+@Stable
 class WeatherHomeViewModel @Inject constructor(
     private val searchLocationUseCase: SearchLocationUseCase,
     private val getSavedLocationUseCase: FetchSaveLocationUseCase,
-    private val deleteLocationUseCase: DeleteLocationUseCase
+    private val deleteLocationUseCase: DeleteLocationUseCase,
+    private val fetchCurrentWeatherUseCase: FetchCurrentWeatherUseCase,
+    private val saveLocationUseCase: SaveLocationUseCase,
+    private val fetchCurrentLocationUseCase: FetchCurrentLocationUseCase
 ) : ViewModel() {
 
-    private var latLongFromGps: String? = null
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private val _savedLocationResults = MutableStateFlow<List<PersistedWeatherModel>>(emptyList())
-    val savedLocationResults: StateFlow<List<PersistedWeatherModel>> =
-        _savedLocationResults.asStateFlow()
+    private val _locationEvent = MutableSharedFlow<String>()
+    val locationEvent: SharedFlow<String> = _locationEvent.asSharedFlow()
 
-    private val _searchSuggestions = MutableStateFlow<List<SearchResponse>>(emptyList())
-    val searchSuggestionsResult: StateFlow<List<SearchResponse>> = _searchSuggestions.asStateFlow()
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
-
-    private val _showProgressBar = MutableStateFlow(false)
-    val showProgressBar: StateFlow<Boolean> = _showProgressBar.asStateFlow()
+    private val refreshedLocationIds = mutableSetOf<Long>()
 
     init {
-        getAllSavedLocations()
+        observeSavedLocations()
     }
 
-    fun getAllSavedLocations() {
+    private fun observeSavedLocations() {
         getSavedLocationUseCase(Unit).onEach { result ->
             when (result) {
-                is Result.Loading -> _showProgressBar.value = true
+                is Result.Loading -> _uiState.update { it.copy(isLocalDataLoading = true) }
                 is Result.Success -> {
-                    _showProgressBar.value = false
-                    _savedLocationResults.value = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            isLocalDataLoading = false,
+                            savedLocations = result.data.map { it.toUiModel() }
+                        )
+                    }
+                    result.data.forEach { location ->
+                        if (location.id !in refreshedLocationIds) {
+                            refreshWeatherForLocation(location)
+                            refreshedLocationIds.add(location.id)
+                        }
+                    }
                 }
 
                 is Result.Error -> {
-                    _showProgressBar.value = false
-                    _errorMessage.value =
-                        "Error loading saved locations: ${result.getErrorMessage()}"
+                    _uiState.update { it.copy(isLocalDataLoading = false, error = result.error) }
                 }
             }
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun searchLocation(location: String) {
+        _uiState.update { it.copy(searchQuery = location) }
         if (location.isEmpty()) {
-            _searchSuggestions.value = emptyList()
+            _uiState.update { it.copy(searchSuggestions = emptyList()) }
             return
         }
         searchLocationUseCase(location).onEach { result ->
             when (result) {
-                is Result.Loading -> _showProgressBar.value = true
+                is Result.Loading -> _uiState.update { it.copy(isSearchLoading = true) }
                 is Result.Success -> {
-                    _showProgressBar.value = false
-                    _searchSuggestions.value = result.data
+                    _uiState.update {
+                        it.copy(
+                            isSearchLoading = false,
+                            searchSuggestions = result.data.map { it.toUiModel() })
+                    }
                 }
 
                 is Result.Error -> {
-                    _showProgressBar.value = false
-                    _errorMessage.value = "Error searching location: ${result.getErrorMessage()}"
+                    _uiState.update { it.copy(isSearchLoading = false, error = result.error) }
                 }
             }
-        }.launchIn(viewModelScope)
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
-    fun removeLocationFromSaved(position: Int) {
-        val locationToDelete = _savedLocationResults.value.getOrNull(position) ?: return
-        deleteLocationUseCase(locationToDelete).onEach { result ->
+    fun removeLocationFromSaved(locationId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(isLocalDataLoading = true) }
+
+            // Temporary reconstruction for deletion logic
+            val mockLocation = WeatherLocation(
+                id = locationId,
+                name = "",
+                region = "",
+                country = "",
+                latitude = 0.0,
+                longitude = 0.0
+            )
+
+            deleteLocationUseCase(mockLocation).onEach { result ->
+                when (result) {
+                    is Result.Success -> {
+                        refreshedLocationIds.remove(locationId)
+                        _uiState.update { it.copy(isLocalDataLoading = false) }
+                    }
+
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLocalDataLoading = false,
+                                error = result.error
+                            )
+                        }
+                    }
+
+                    else -> {}
+                }
+            }.collect()
+        }
+    }
+
+    fun updateSearchActive(isActive: Boolean) {
+        _uiState.update { it.copy(isSearchActive = isActive) }
+    }
+
+    fun fetchLocation() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(isSearchLoading = true) }
+            when (val result = fetchCurrentLocationUseCase()) {
+                is Result.Success -> {
+                    _uiState.update { it.copy(isSearchLoading = false) }
+                    val location = result.data
+                    _locationEvent.emit("${location.latitude},${location.longitude}")
+                }
+
+                is Result.Error -> {
+                    _uiState.update { it.copy(isSearchLoading = false, error = result.error) }
+                }
+
+                is Result.Loading -> {
+                    _uiState.update { it.copy(isSearchLoading = true) }
+                }
+            }
+        }
+    }
+
+    fun refreshWeatherForLocation(location: WeatherLocation) {
+        _uiState.update { it.copy(refreshingLocationIds = it.refreshingLocationIds + location.id) }
+
+        fetchCurrentWeatherUseCase(
+            FetchCurrentWeatherUseCase.Params(
+                location.name,
+                forceRefresh = true
+            )
+        ).onEach { result ->
             when (result) {
-                is Result.Loading -> _showProgressBar.value = true
+                is Result.Loading -> {}
                 is Result.Success -> {
-                    _showProgressBar.value = false
-                    getAllSavedLocations()
+                    _uiState.update { it.copy(refreshingLocationIds = it.refreshingLocationIds - location.id) }
                 }
 
                 is Result.Error -> {
-                    _showProgressBar.value = false
-                    _errorMessage.value = "Error deleting location: ${result.getErrorMessage()}"
+                    _uiState.update { 
+                        it.copy(
+                            refreshingLocationIds = it.refreshingLocationIds - location.id,
+                            error = result.error
+                        ) 
+                    }
                 }
             }
-        }.launchIn(viewModelScope)
-    }
-
-    fun setLocationFromGps(latitude: Double, longitude: Double): String {
-        val latLong = "$latitude,$longitude"
-        latLongFromGps = latLong
-        return latLong
-    }
-
-    fun clearErrorMessage() {
-        _errorMessage.value = null
+        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 }

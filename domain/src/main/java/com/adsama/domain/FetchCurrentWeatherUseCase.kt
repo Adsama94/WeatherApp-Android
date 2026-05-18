@@ -1,20 +1,22 @@
 package com.adsama.domain
 
-import com.adsama.model.AppError
-import com.adsama.model.ForecastResponse
-import com.adsama.model.Result
-import com.adsama.model.ResultFlowUseCase
+import com.adsama.domain.model.DomainError
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.ResultFlowUseCase
+import com.adsama.domain.model.WeatherReport
 import javax.inject.Inject
 
 class FetchCurrentWeatherUseCase @Inject constructor(
     private val weatherDataSource: WeatherDataSource
-) : ResultFlowUseCase<String, ForecastResponse>() {
+) : ResultFlowUseCase<FetchCurrentWeatherUseCase.Params, WeatherReport>() {
 
-    override suspend fun execute(parameters: String): Result<ForecastResponse> {
-        if (parameters.isBlank()) {
-            return Result.Error(AppError.ValidationError("Location cannot be empty or blank"))
+    data class Params(val location: String, val forceRefresh: Boolean = false)
+
+    override suspend fun execute(parameters: Params): Result<WeatherReport> {
+        if (parameters.location.isBlank()) {
+            return Result.Error(DomainError.ValidationError("Location cannot be empty or blank"))
         }
-        return weatherDataSource.getForecast(parameters)
+        return weatherDataSource.getForecast(parameters.location, parameters.forceRefresh)
     }
 
 }

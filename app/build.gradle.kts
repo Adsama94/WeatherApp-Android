@@ -2,7 +2,9 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -20,7 +22,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -36,6 +39,14 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+}
+composeCompiler {
+    stabilityConfigurationFile = layout.projectDirectory.file("compose_compiler_config.conf")
 }
 
 dependencies {
@@ -44,6 +55,7 @@ dependencies {
     implementation(project(":database"))
     implementation(project(":model"))
     implementation(project(":network"))
+    implementation(project(":location"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -55,17 +67,17 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.profileinstaller)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.google.material)
-    implementation(libs.playservices.location)
-    implementation(libs.glide)
+    implementation(libs.coil.compose)
 
     implementation(libs.dagger.hilt.android)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.recyclerview)
     ksp(libs.dagger.hilt.android.compiler)
 
+    baselineProfile(project(":baselineprofile"))
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.test.junit)
