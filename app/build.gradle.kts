@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
-
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.dagger.hilt)
@@ -73,6 +71,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.google.material)
     implementation(libs.coil.compose)
 
     implementation(libs.dagger.hilt.android)
