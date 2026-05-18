@@ -1,6 +1,6 @@
 package com.adsama.database
 
-import com.adsama.data.LocalWeatherDataSource
+import com.adsama.domain.LocalWeatherDataSource
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation

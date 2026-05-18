@@ -36,5 +36,5 @@ object DatabaseModule {
 abstract class DataSourceModule {
     @dagger.Binds
     @Singleton
-    abstract fun bindLocalWeatherDataSource(localWeatherDataSourceImpl: com.adsama.database.LocalWeatherDataSourceImpl): com.adsama.data.LocalWeatherDataSource
+    abstract fun bindLocalWeatherDataSource(localWeatherDataSourceImpl: com.adsama.database.LocalWeatherDataSourceImpl): com.adsama.domain.LocalWeatherDataSource
 }

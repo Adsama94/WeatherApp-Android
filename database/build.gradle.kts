@@ -1,6 +1,6 @@
 plugins {
     alias(libs.plugins.android.library)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.kotlin.ksp)
     alias(libs.plugins.dagger.hilt)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -23,7 +23,6 @@ android {
 
 dependencies {
     implementation(project(":domain"))
-    implementation(project(":data"))
     
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)

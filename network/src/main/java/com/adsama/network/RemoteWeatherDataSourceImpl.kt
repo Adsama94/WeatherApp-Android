@@ -1,6 +1,6 @@
 package com.adsama.network
 
-import com.adsama.data.RemoteWeatherDataSource
+import com.adsama.domain.RemoteWeatherDataSource
 import com.adsama.domain.model.*
 import com.adsama.network.adapter.NetworkResponse
 import com.adsama.network.mapper.WeatherRemoteMapper

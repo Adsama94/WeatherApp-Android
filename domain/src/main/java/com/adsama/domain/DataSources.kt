@@ -1,4 +1,4 @@
-package com.adsama.data
+package com.adsama.domain
 
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation

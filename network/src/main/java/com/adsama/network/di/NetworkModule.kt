@@ -81,5 +81,5 @@ object NetworkModule {
 abstract class DataSourceModule {
     @dagger.Binds
     @Singleton
-    abstract fun bindRemoteWeatherDataSource(remoteWeatherDataSourceImpl: com.adsama.network.RemoteWeatherDataSourceImpl): com.adsama.data.RemoteWeatherDataSource
+    abstract fun bindRemoteWeatherDataSource(remoteWeatherDataSourceImpl: com.adsama.network.RemoteWeatherDataSourceImpl): com.adsama.domain.RemoteWeatherDataSource
 }

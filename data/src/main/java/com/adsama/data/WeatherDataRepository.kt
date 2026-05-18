@@ -1,5 +1,7 @@
 package com.adsama.data
 
+import com.adsama.domain.LocalWeatherDataSource
+import com.adsama.domain.RemoteWeatherDataSource
 import com.adsama.domain.WeatherDataSource
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
