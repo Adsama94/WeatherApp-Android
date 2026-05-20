@@ -43,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +53,7 @@ import com.adsama.weatherapp.ui.model.AlertUiModel
 import com.adsama.weatherapp.ui.model.DailyForecastUiModel
 import com.adsama.weatherapp.ui.model.HourlyForecastUiModel
 import com.adsama.weatherapp.ui.model.WeatherDetailUiModel
+import com.adsama.weatherapp.ui.theme.WeatherAppTheme
 
 @Composable
 fun WeatherDetailScreen(
@@ -507,5 +509,155 @@ fun AlertItem(alert: AlertUiModel) {
                 color = MaterialTheme.colorScheme.onErrorContainer
             )
         }
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun WeatherDetailContentPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        WeatherDetailContent(
+            uiModel = WeatherDetailUiModel(
+                locationName = "New York",
+                currentTemp = "22°",
+                conditionText = "Partly Cloudy",
+                conditionIcon = "https://cdn.weatherapi.com/weather/64x64/day/116.png",
+                highLowTemp = "25° / 15°",
+                precipitation = "10%",
+                wind = "15 km/h",
+                windDir = "NE",
+                uvIndex = "5 (Moderate)",
+                sunTimes = "Sunrise: 6:30 AM\nSunset: 7:45 PM",
+                hourlyForecast = emptyList(),
+                dailyForecast = emptyList(),
+                alerts = emptyList()
+            )
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun WeatherHeaderPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        WeatherHeader(
+            WeatherDetailUiModel(
+                locationName = "New York",
+                currentTemp = "22°",
+                conditionText = "Partly Cloudy",
+                conditionIcon = "https://cdn.weatherapi.com/weather/64x64/day/116.png",
+                highLowTemp = "25° / 15°",
+                precipitation = "10%",
+                wind = "15 km/h",
+                windDir = "NE",
+                uvIndex = "5 (Moderate)",
+                sunTimes = "Sunrise: 6:30 AM\nSunset: 7:45 PM",
+                hourlyForecast = emptyList(),
+                dailyForecast = emptyList(),
+                alerts = emptyList()
+            )
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun TelemetrySectionPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        TelemetrySection(
+            WeatherDetailUiModel(
+                locationName = "New York",
+                currentTemp = "22°",
+                conditionText = "Partly Cloudy",
+                conditionIcon = "https://cdn.weatherapi.com/weather/64x64/day/116.png",
+                highLowTemp = "25° / 15°",
+                precipitation = "10%",
+                wind = "15 km/h",
+                windDir = "NE",
+                uvIndex = "5 (Moderate)",
+                sunTimes = "Sunrise: 6:30 AM\nSunset: 7:45 PM",
+                hourlyForecast = emptyList(),
+                dailyForecast = emptyList(),
+                alerts = emptyList()
+            )
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun HourlySectionPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        HourlySection(
+            condition = "Partly Cloudy",
+            hourly = listOf(
+                HourlyForecastUiModel(
+                    time = "2 PM",
+                    temp = "22°",
+                    icon = "https://cdn.weatherapi.com/weather/64x64/day/116.png",
+                    timeEpoch = 0
+                ),
+                HourlyForecastUiModel(
+                    time = "3 PM",
+                    temp = "21°",
+                    icon = "https://cdn.weatherapi.com/weather/64x64/day/116.png",
+                    timeEpoch = 3600
+                ),
+                HourlyForecastUiModel(
+                    time = "4 PM",
+                    temp = "20°",
+                    icon = "https://cdn.weatherapi.com/weather/64x64/day/116.png",
+                    timeEpoch = 7200
+                )
+            )
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun FiveDayForecastSectionPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        FiveDayForecastSection(
+            forecast = listOf(
+                DailyForecastUiModel(
+                    day = "Monday",
+                    date = "Oct 2",
+                    highLowTemp = "15° / 7°",
+                    icon = "https://cdn.weatherapi.com/weather/64x64/day/116.png"
+                ),
+                DailyForecastUiModel(
+                    day = "Tuesday",
+                    date = "Oct 3",
+                    highLowTemp = "17° / 9°",
+                    icon = "https://cdn.weatherapi.com/weather/64x64/day/113.png"
+                ),
+                DailyForecastUiModel(
+                    day = "Wednesday",
+                    date = "Oct 4",
+                    highLowTemp = "14° / 6°",
+                    icon = "https://cdn.weatherapi.com/weather/64x64/day/119.png"
+                )
+            )
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun AlertsSectionPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        AlertsSection(
+            alerts = listOf(
+                AlertUiModel(
+                    event = "Severe Thunderstorm Warning",
+                    headline = "A severe thunderstorm has been detected in your area. Seek shelter immediately and avoid outdoor activities until the storm passes."
+                ),
+                AlertUiModel(
+                    event = "Flood Watch",
+                    headline = "Heavy rainfall expected over the next 24 hours. Monitor local news and be prepared for potential flooding in low-lying areas."
+                )
+            )
+        )
     }
 }
