@@ -2,6 +2,7 @@ package com.adsama.data
 
 import com.adsama.domain.LocalWeatherDataSource
 import com.adsama.domain.RemoteWeatherDataSource
+import com.adsama.domain.WeatherConstants
 import com.adsama.domain.WeatherDataSource
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
@@ -14,12 +15,23 @@ class WeatherDataRepository @Inject constructor(
     private val remoteWeatherDataSource: RemoteWeatherDataSource
 ) : WeatherDataSource {
 
-    override suspend fun getForecast(location: String, forceRefresh: Boolean): Result<WeatherReport> {
+    override suspend fun getForecast(
+        location: String,
+        forceRefresh: Boolean
+    ): Result<WeatherReport> {
         val localResult = localWeatherDataSource.fetchForecast(location)
-        
-        // If we have a local result with a report AND we're not forcing a refresh, return it
-        if (!forceRefresh && localResult is Result.Success && localResult.data.report != null) {
-            return Result.Success(localResult.data.report!!)
+        val currentTime = System.currentTimeMillis()
+
+        // If we have local data, check if it's still fresh
+        if (localResult is Result.Success) {
+            val cachedLocation = localResult.data
+            val isFresh =
+                (currentTime - cachedLocation.lastUpdatedEpoch < WeatherConstants.REFRESH_THRESHOLD_MS)
+
+            // If not forcing refresh OR if data is still fresh, return cached report
+            if ((!forceRefresh || isFresh) && cachedLocation.report != null) {
+                return Result.Success(cachedLocation.report!!)
+            }
         }
 
         // Fetch from remote
@@ -34,6 +46,7 @@ class WeatherDataRepository @Inject constructor(
                             temperature = freshReport.current.tempC,
                             conditionText = freshReport.current.conditionText,
                             conditionIcon = freshReport.current.conditionIcon,
+                            lastUpdatedEpoch = System.currentTimeMillis(),
                             report = freshReport
                         )
                     )

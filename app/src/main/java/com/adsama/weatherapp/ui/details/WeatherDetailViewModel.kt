@@ -1,5 +1,6 @@
 package com.adsama.weatherapp.ui.details
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adsama.domain.DeleteLocationUseCase
@@ -24,6 +25,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
+@Stable
 class WeatherDetailViewModel @Inject constructor(
     private val fetchCurrentWeatherUseCase: FetchCurrentWeatherUseCase,
     private val getSavedLocationUseCase: FetchSaveLocationUseCase,

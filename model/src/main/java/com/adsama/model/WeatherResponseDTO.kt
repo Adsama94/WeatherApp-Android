@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class ForecastResponse(
-    val alerts: Alerts,
+    val alerts: Alerts = Alerts(emptyList()),
     val current: Current,
     val forecast: Forecast,
     val location: Location
@@ -43,16 +43,16 @@ data class Condition(
 
 @Serializable
 data class ForecastDay(
-    val astro: Astro,
+    val astro: Astro? = null,
     val date: String,
     val day: Day,
-    val hour: List<Hour>
+    val hour: List<Hour> = emptyList()
 )
 
 @Serializable
 data class Astro(
-    val sunrise: String,
-    val sunset: String
+    val sunrise: String = "",
+    val sunset: String = ""
 )
 
 @Serializable
@@ -72,7 +72,7 @@ data class Hour(
 
 @Serializable
 data class Alerts(
-    val alert: List<Alert>
+    val alert: List<Alert> = emptyList()
 )
 
 @Serializable

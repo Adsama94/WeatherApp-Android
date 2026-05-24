@@ -9,6 +9,7 @@ import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
 import com.adsama.domain.SearchLocationUseCase
+import com.adsama.domain.WeatherConstants
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
 import com.adsama.weatherapp.ui.mapper.toUiModel
@@ -62,8 +63,12 @@ class WeatherHomeViewModel @Inject constructor(
                             savedLocations = result.data.map { it.toUiModel() }
                         )
                     }
+                    val currentTime = System.currentTimeMillis()
                     result.data.forEach { location ->
-                        if (location.id !in refreshedLocationIds) {
+                        val shouldRefresh = location.id !in refreshedLocationIds ||
+                                (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
+
+                        if (shouldRefresh) {
                             refreshWeatherForLocation(location)
                             refreshedLocationIds.add(location.id)
                         }
@@ -75,6 +80,40 @@ class WeatherHomeViewModel @Inject constructor(
                 }
             }
         }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+    }
+
+    fun refreshAllLocations(force: Boolean = false) {
+        val currentState = _uiState.value
+        if (currentState.savedLocations.isEmpty()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(isLocalDataLoading = true) }
+            val currentTime = System.currentTimeMillis()
+
+            // We'll observe the results via observeSavedLocations, 
+            // but we trigger the refreshes here.
+            currentState.savedLocations.forEach { locationUi ->
+                // To get lastUpdatedEpoch, we need the original domain models.
+                // However, we can just call the repository/usecase again or
+                // just rely on the fact that refreshWeatherForLocation handles it.
+                // Let's find the location in our internal list if we had one, 
+                // but the UI only has UI models.
+            }
+
+            // Re-fetching saved locations to get domain models with timestamps
+            getSavedLocationUseCase(Unit).onEach { result ->
+                if (result is Result.Success) {
+                    result.data.forEach { location ->
+                        val shouldRefresh =
+                            force || (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
+                        if (shouldRefresh) {
+                            refreshWeatherForLocation(location)
+                        }
+                    }
+                }
+                _uiState.update { it.copy(isLocalDataLoading = false) }
+            }.collect()
+        }
     }
 
     fun searchLocation(location: String) {

@@ -1,7 +1,16 @@
 package com.adsama.network.mapper
 
-import com.adsama.domain.model.*
-import com.adsama.model.*
+import com.adsama.domain.model.CurrentWeather
+import com.adsama.domain.model.HourlyWeather
+import com.adsama.domain.model.WeatherAlert
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.domain.model.WeatherReport
+import com.adsama.model.Alert
+import com.adsama.model.Current
+import com.adsama.model.ForecastResponse
+import com.adsama.model.Hour
+import com.adsama.model.Location
+import com.adsama.model.SearchResponse
 import javax.inject.Inject
 
 class WeatherRemoteMapper @Inject constructor() {
@@ -55,8 +64,8 @@ class WeatherRemoteMapper @Inject constructor() {
             minTempC = forecastDay.day.mintemp_c,
             conditionText = forecastDay.day.condition.text,
             conditionIcon = forecastDay.day.condition.icon,
-            sunrise = forecastDay.astro.sunrise,
-            sunset = forecastDay.astro.sunset,
+            sunrise = forecastDay.astro?.sunrise ?: "NA",
+            sunset = forecastDay.astro?.sunset ?: "NA",
             hourly = forecastDay.hour.map { mapHourToDomain(it) }
         )
     }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import javax.inject.Inject
+import kotlin.math.abs
 
 class LocalWeatherDataSourceImpl @Inject constructor(
     private val weatherLocationDAO: WeatherLocationDAO
@@ -51,8 +52,25 @@ class LocalWeatherDataSourceImpl @Inject constructor(
 
     override suspend fun fetchForecast(location: String): Result<WeatherLocation> {
         return try {
-            val savedLocation =
-                weatherLocationDAO.getAllSavedLocationsOnce().find { it.name == location }
+            val allSaved = weatherLocationDAO.getAllSavedLocationsOnce()
+            val savedLocation = allSaved.find {
+                val compositeName = "${it.name}, ${it.region}, ${it.country}"
+                compositeName.equals(location, ignoreCase = true) || it.name.equals(
+                    location,
+                    ignoreCase = true
+                )
+            } ?: allSaved.find {
+                val coordinates = location.split(",")
+                if (coordinates.size == 2) {
+                    val lat = coordinates[0].trim().toDoubleOrNull()
+                    val lon = coordinates[1].trim().toDoubleOrNull()
+                    if (lat != null && lon != null) {
+                        // Match with small epsilon for coordinates
+                        abs(it.lat - lat) < 0.001 && abs(it.lon - lon) < 0.001
+                    } else false
+                } else false
+            }
+
             if (savedLocation != null) {
                 Result.Success(savedLocation.toDomain())
             } else {
@@ -77,6 +95,7 @@ fun PersistedWeatherModel.toDomain(): WeatherLocation {
         conditionText = text,
         conditionIcon = icon,
         lastUpdated = date,
+        lastUpdatedEpoch = lastUpdatedEpoch,
         report = report
     )
 }
@@ -93,6 +112,7 @@ fun WeatherLocation.toEntity(): PersistedWeatherModel {
         text = conditionText ?: "",
         icon = conditionIcon ?: "",
         date = lastUpdated ?: "",
+        lastUpdatedEpoch = lastUpdatedEpoch,
         report = report
     )
 }

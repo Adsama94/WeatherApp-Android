@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,11 +33,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,13 +51,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.adsama.weatherapp.R
 import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
+import com.adsama.weatherapp.ui.theme.WeatherAppTheme
 
 @Composable
 fun WeatherHomeScreen(
@@ -80,7 +85,8 @@ fun WeatherHomeScreen(
         onCurrentLocationClick = {
             viewModel.updateSearchActive(false)
             onCurrentLocationClick()
-        }
+        },
+        onRefresh = viewModel::refreshAllLocations
     )
 }
 
@@ -92,7 +98,8 @@ fun WeatherHomeScreen(
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
-    onCurrentLocationClick: () -> Unit
+    onCurrentLocationClick: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -110,7 +117,8 @@ fun WeatherHomeScreen(
         onSearchQueryChange = onSearchQueryChange,
         onSearchActiveChange = onSearchActiveChange,
         onLocationClick = onLocationClick,
-        onCurrentLocationClick = onCurrentLocationClick
+        onCurrentLocationClick = onCurrentLocationClick,
+        onRefresh = onRefresh
     )
 }
 
@@ -123,7 +131,8 @@ fun WeatherHomeContent(
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
-    onCurrentLocationClick: () -> Unit
+    onCurrentLocationClick: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -178,11 +187,18 @@ fun WeatherHomeContent(
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            Box {
-                SearchBar(
-                    modifier = Modifier.fillMaxWidth(),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f)
+            ) {
+                DockedSearchBar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth(),
                     inputField = {
                         SearchBarDefaults.InputField(
+                            modifier = Modifier.fillMaxWidth(),
                             query = uiState.searchQuery,
                             onQueryChange = onSearchQueryChange,
                             onSearch = { onSearchActiveChange(false) },
@@ -213,14 +229,14 @@ fun WeatherHomeContent(
                         item(contentType = "current_location") {
                             CurrentLocationRow(onClick = onCurrentLocationClick)
                         }
-                        items(
+                        itemsIndexed(
                             items = uiState.searchSuggestions,
-                            key = { "${it.name}_${it.region}_${it.country}" },
-                            contentType = { "search_suggestion" }
-                        ) { suggestion ->
+                            key = { index, it -> "${it.name}_${it.region}_${it.country}_$index" },
+                            contentType = { _, _ -> "search_suggestion" }
+                        ) { _, suggestion ->
                             SearchSuggestionItem(
                                 suggestion = suggestion,
-                                onClick = { onLocationClick(suggestion.name) }
+                                onClick = { onLocationClick("${suggestion.name}, ${suggestion.region}, ${suggestion.country}") }
                             )
                         }
                     }
@@ -237,7 +253,11 @@ fun WeatherHomeContent(
                 )
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            PullToRefreshBox(
+                isRefreshing = uiState.isLocalDataLoading,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize()
+            ) {
                 if (uiState.savedLocations.isEmpty()) {
                     WeatherHomeEmptyScreen(modifier = Modifier.align(Alignment.Center))
                 } else {
@@ -255,7 +275,7 @@ fun WeatherHomeContent(
                         ) { location ->
                             SavedLocationItem(
                                 location = location,
-                                onClick = { onLocationClick(location.name) }
+                                onClick = { onLocationClick("${location.name}, ${location.region}, ${location.country}") }
                             )
                         }
                     }
@@ -383,5 +403,101 @@ fun WeatherHomeEmptyScreen(modifier: Modifier = Modifier) {
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
         )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun WeatherHomeScreenPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        WeatherHomeScreen(
+            uiState = HomeUiState(
+                searchQuery = "New York",
+                isSearchActive = true,
+                searchSuggestions = listOf(
+                    WeatherLocationUiModel(
+                        id = 1L,
+                        name = "New York",
+                        region = "NY",
+                        country = "USA",
+                        temperature = "25°C",
+                        conditionText = "Sunny",
+                        conditionIcon = ""
+                    ),
+                    WeatherLocationUiModel(
+                        id = 2L,
+                        name = "Newark",
+                        region = "NJ",
+                        country = "USA",
+                        temperature = "22°C",
+                        conditionText = "Cloudy",
+                        conditionIcon = ""
+                    )
+                ),
+                savedLocations = emptyList(),
+                refreshingLocationIds = emptySet(),
+                error = null
+            ),
+            isDarkMode = true,
+            onToggleTheme = {},
+            onSearchQueryChange = {},
+            onSearchActiveChange = {},
+            onLocationClick = {},
+            onCurrentLocationClick = {},
+            onRefresh = {}
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun CurrentLocationRowPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        CurrentLocationRow { }
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun SearchSuggestionItemPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        SearchSuggestionItem(
+            suggestion = WeatherLocationUiModel(
+                id = 1L,
+                name = "New York",
+                region = "NY",
+                country = "USA",
+                temperature = "25°C",
+                conditionText = "Sunny",
+                conditionIcon = ""
+            )
+        ) {}
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun SavedLocationItemPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        SavedLocationItem(
+            location = WeatherLocationUiModel(
+                id = 1L,
+                name = "New York",
+                region = "NY",
+                country = "USA",
+                temperature = "25°C",
+                conditionText = "Sunny",
+                conditionIcon = ""
+            ),
+            onClick = {}
+        )
+    }
+}
+
+@Preview(showBackground = false)
+@Composable
+fun WeatherHomeEmptyScreenPreview() {
+    WeatherAppTheme(darkTheme = true) {
+        WeatherHomeEmptyScreen()
     }
 }

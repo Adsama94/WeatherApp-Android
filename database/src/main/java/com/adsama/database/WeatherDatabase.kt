@@ -4,7 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 
-@Database(entities = [PersistedWeatherModel::class], version = 4, exportSchema = true)
+@Database(entities = [PersistedWeatherModel::class], version = 5, exportSchema = true)
 @TypeConverters(WeatherTypeConverters::class)
 abstract class WeatherDatabase : RoomDatabase() {
     abstract fun weatherLocationDAO(): WeatherLocationDAO
