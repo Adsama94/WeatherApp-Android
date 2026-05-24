@@ -27,6 +27,7 @@ object DatabaseModule {
     ): WeatherDatabase {
         return Room
             .databaseBuilder(application, WeatherDatabase::class.java, "weather_db")
+            .fallbackToDestructiveMigration()
             .build()
     }
 }

@@ -20,9 +20,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -180,11 +182,18 @@ fun WeatherHomeContent(
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            Box {
-                SearchBar(
-                    modifier = Modifier.fillMaxWidth(),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .zIndex(1f)
+            ) {
+                DockedSearchBar(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth(),
                     inputField = {
                         SearchBarDefaults.InputField(
+                            modifier = Modifier.fillMaxWidth(),
                             query = uiState.searchQuery,
                             onQueryChange = onSearchQueryChange,
                             onSearch = { onSearchActiveChange(false) },
@@ -215,14 +224,14 @@ fun WeatherHomeContent(
                         item(contentType = "current_location") {
                             CurrentLocationRow(onClick = onCurrentLocationClick)
                         }
-                        items(
+                        itemsIndexed(
                             items = uiState.searchSuggestions,
-                            key = { "${it.name}_${it.region}_${it.country}" },
-                            contentType = { "search_suggestion" }
-                        ) { suggestion ->
+                            key = { index, it -> "${it.name}_${it.region}_${it.country}_$index" },
+                            contentType = { _, _ -> "search_suggestion" }
+                        ) { _, suggestion ->
                             SearchSuggestionItem(
                                 suggestion = suggestion,
-                                onClick = { onLocationClick(suggestion.name) }
+                                onClick = { onLocationClick("${suggestion.name}, ${suggestion.region}, ${suggestion.country}") }
                             )
                         }
                     }
@@ -257,7 +266,7 @@ fun WeatherHomeContent(
                         ) { location ->
                             SavedLocationItem(
                                 location = location,
-                                onClick = { onLocationClick(location.name) }
+                                onClick = { onLocationClick("${location.name}, ${location.region}, ${location.country}") }
                             )
                         }
                     }
