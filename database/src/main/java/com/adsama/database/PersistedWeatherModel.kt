@@ -17,5 +17,6 @@ data class PersistedWeatherModel(
     @ColumnInfo(name = "text_desc") val text: String,
     @ColumnInfo(name = "icon_weather") val icon: String,
     @ColumnInfo(name = "date") val date: String,
+    @ColumnInfo(name = "last_updated_epoch") val lastUpdatedEpoch: Long = 0,
     @ColumnInfo(name = "weather_report") val report: WeatherReport? = null
 )

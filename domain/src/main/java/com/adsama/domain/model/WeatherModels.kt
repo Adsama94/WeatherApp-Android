@@ -14,6 +14,7 @@ data class WeatherLocation(
     val conditionText: String? = null,
     val conditionIcon: String? = null,
     val lastUpdated: String? = null,
+    val lastUpdatedEpoch: Long = 0,
     @kotlinx.serialization.Transient
     val report: WeatherReport? = null
 )

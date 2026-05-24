@@ -95,6 +95,7 @@ fun PersistedWeatherModel.toDomain(): WeatherLocation {
         conditionText = text,
         conditionIcon = icon,
         lastUpdated = date,
+        lastUpdatedEpoch = lastUpdatedEpoch,
         report = report
     )
 }
@@ -111,6 +112,7 @@ fun WeatherLocation.toEntity(): PersistedWeatherModel {
         text = conditionText ?: "",
         icon = conditionIcon ?: "",
         date = lastUpdated ?: "",
+        lastUpdatedEpoch = lastUpdatedEpoch,
         report = report
     )
 }

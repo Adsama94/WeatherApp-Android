@@ -37,6 +37,7 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,7 +85,8 @@ fun WeatherHomeScreen(
         onCurrentLocationClick = {
             viewModel.updateSearchActive(false)
             onCurrentLocationClick()
-        }
+        },
+        onRefresh = viewModel::refreshAllLocations
     )
 }
 
@@ -96,7 +98,8 @@ fun WeatherHomeScreen(
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
-    onCurrentLocationClick: () -> Unit
+    onCurrentLocationClick: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -114,7 +117,8 @@ fun WeatherHomeScreen(
         onSearchQueryChange = onSearchQueryChange,
         onSearchActiveChange = onSearchActiveChange,
         onLocationClick = onLocationClick,
-        onCurrentLocationClick = onCurrentLocationClick
+        onCurrentLocationClick = onCurrentLocationClick,
+        onRefresh = onRefresh
     )
 }
 
@@ -127,7 +131,8 @@ fun WeatherHomeContent(
     onSearchQueryChange: (String) -> Unit,
     onSearchActiveChange: (Boolean) -> Unit,
     onLocationClick: (String) -> Unit,
-    onCurrentLocationClick: () -> Unit
+    onCurrentLocationClick: () -> Unit,
+    onRefresh: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -248,7 +253,11 @@ fun WeatherHomeContent(
                 )
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            PullToRefreshBox(
+                isRefreshing = uiState.isLocalDataLoading,
+                onRefresh = onRefresh,
+                modifier = Modifier.fillMaxSize()
+            ) {
                 if (uiState.savedLocations.isEmpty()) {
                     WeatherHomeEmptyScreen(modifier = Modifier.align(Alignment.Center))
                 } else {
@@ -434,7 +443,8 @@ fun WeatherHomeScreenPreview() {
             onSearchQueryChange = {},
             onSearchActiveChange = {},
             onLocationClick = {},
-            onCurrentLocationClick = {}
+            onCurrentLocationClick = {},
+            onRefresh = {}
         )
     }
 }
