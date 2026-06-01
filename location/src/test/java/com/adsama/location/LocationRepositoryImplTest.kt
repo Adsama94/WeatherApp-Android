@@ -28,7 +28,6 @@ class LocationRepositoryImplTest {
 
     @Test
     fun `getCurrentLocation returns success when location is found`() = runTest {
-        // Given
         val mockLocation = mockk<Location> {
             every { latitude } returns 51.5074
             every { longitude } returns -0.1278
@@ -36,8 +35,7 @@ class LocationRepositoryImplTest {
         val mockTask = mockk<Task<Location>>()
         
         every { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null) } returns mockTask
-        
-        // Mock the success listener callback
+
         every { mockTask.addOnSuccessListener(any<OnSuccessListener<Location>>()) } answers {
             val listener = it.invocation.args[0] as OnSuccessListener<Location>
             listener.onSuccess(mockLocation)
@@ -45,10 +43,8 @@ class LocationRepositoryImplTest {
         }
         every { mockTask.addOnFailureListener(any()) } returns mockTask
 
-        // When
         val result = repository.getCurrentLocation()
 
-        // Then
         assertTrue(result is Result.Success)
         assertEquals(51.5074, (result as Result.Success).data.latitude, 0.0001)
         assertEquals(-0.1278, result.data.longitude, 0.0001)
@@ -56,29 +52,25 @@ class LocationRepositoryImplTest {
 
     @Test
     fun `getCurrentLocation returns error when location is null`() = runTest {
-        // Given
         val mockTask = mockk<Task<Location>>()
         
         every { fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null) } returns mockTask
         
         every { mockTask.addOnSuccessListener(any<OnSuccessListener<Location>>()) } answers {
-            val listener = it.invocation.args[0] as OnSuccessListener<Location>
+            val listener = it.invocation.args[0] as OnSuccessListener<*>
             listener.onSuccess(null)
             mockTask
         }
         every { mockTask.addOnFailureListener(any()) } returns mockTask
 
-        // When
         val result = repository.getCurrentLocation()
 
-        // Then
         assertTrue(result is Result.Error)
         assertEquals("Unable to get current location", (result as Result.Error).error.message)
     }
 
     @Test
     fun `getCurrentLocation returns error when task fails`() = runTest {
-        // Given
         val mockTask = mockk<Task<Location>>()
         val exception = Exception("GPS error")
         
@@ -91,10 +83,8 @@ class LocationRepositoryImplTest {
             mockTask
         }
 
-        // When
         val result = repository.getCurrentLocation()
 
-        // Then
         assertTrue(result is Result.Error)
         assertEquals("GPS error", (result as Result.Error).error.message)
     }
