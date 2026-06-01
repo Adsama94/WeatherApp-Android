@@ -15,6 +15,7 @@ import com.adsama.domain.model.WeatherLocation
 import com.adsama.weatherapp.ui.mapper.toUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -22,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -29,6 +32,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(FlowPreview::class)
 @HiltViewModel
 @Stable
 class WeatherHomeViewModel @Inject constructor(
@@ -53,33 +57,40 @@ class WeatherHomeViewModel @Inject constructor(
     }
 
     private fun observeSavedLocations() {
-        getSavedLocationUseCase(Unit).onEach { result ->
-            when (result) {
-                is Result.Loading -> _uiState.update { it.copy(isLocalDataLoading = true) }
-                is Result.Success -> {
-                    _uiState.update { state ->
-                        state.copy(
-                            isLocalDataLoading = false,
-                            savedLocations = result.data.map { it.toUiModel() }
-                        )
-                    }
-                    val currentTime = System.currentTimeMillis()
-                    result.data.forEach { location ->
-                        val shouldRefresh = location.id !in refreshedLocationIds ||
-                                (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
+        getSavedLocationUseCase(Unit)
+            .debounce(250)
+            .onEach { result ->
+                when (result) {
+                    is Result.Loading -> _uiState.update { it.copy(isLocalDataLoading = true) }
+                    is Result.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                isLocalDataLoading = false,
+                                savedLocations = result.data.map { it.toUiModel() }
+                            )
+                        }
+                        val currentTime = System.currentTimeMillis()
+                        result.data.forEach { location ->
+                            val shouldRefresh = location.id !in refreshedLocationIds ||
+                                    (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
 
-                        if (shouldRefresh) {
-                            refreshWeatherForLocation(location)
-                            refreshedLocationIds.add(location.id)
+                            if (shouldRefresh) {
+                                refreshWeatherForLocation(location)
+                                refreshedLocationIds.add(location.id)
+                            }
+                        }
+                    }
+
+                    is Result.Error -> {
+                        _uiState.update {
+                            it.copy(
+                                isLocalDataLoading = false,
+                                error = result.error
+                            )
                         }
                     }
                 }
-
-                is Result.Error -> {
-                    _uiState.update { it.copy(isLocalDataLoading = false, error = result.error) }
-                }
-            }
-        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+            }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
     }
 
     fun refreshAllLocations(force: Boolean = false) {
@@ -87,7 +98,6 @@ class WeatherHomeViewModel @Inject constructor(
         if (currentState.savedLocations.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLocalDataLoading = true) }
             val currentTime = System.currentTimeMillis()
 
             // We'll observe the results via observeSavedLocations, 
@@ -101,18 +111,16 @@ class WeatherHomeViewModel @Inject constructor(
             }
 
             // Re-fetching saved locations to get domain models with timestamps
-            getSavedLocationUseCase(Unit).onEach { result ->
-                if (result is Result.Success) {
-                    result.data.forEach { location ->
-                        val shouldRefresh =
-                            force || (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
-                        if (shouldRefresh) {
-                            refreshWeatherForLocation(location)
-                        }
+            val result = getSavedLocationUseCase(Unit).first()
+            if (result is Result.Success) {
+                result.data.forEach { location ->
+                    val shouldRefresh =
+                        force || (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
+                    if (shouldRefresh) {
+                        refreshWeatherForLocation(location)
                     }
                 }
-                _uiState.update { it.copy(isLocalDataLoading = false) }
-            }.collect()
+            }
         }
     }
 
@@ -217,11 +225,11 @@ class WeatherHomeViewModel @Inject constructor(
                 }
 
                 is Result.Error -> {
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
                             refreshingLocationIds = it.refreshingLocationIds - location.id,
                             error = result.error
-                        ) 
+                        )
                     }
                 }
             }

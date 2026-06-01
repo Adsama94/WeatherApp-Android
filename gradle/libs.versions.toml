@@ -1,5 +1,6 @@
 [versions]
 compileSdk = "37"
+dejavu = "0.3.1"
 minSdk = "24"
 targetSdk = "36"
 javaVersion = "17"
@@ -68,6 +69,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "androidxRoom" }
 
 # Google & Material
+dejavu = { module = "me.mmckenna.dejavu:dejavu", version.ref = "dejavu" }
 playservices-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 

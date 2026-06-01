@@ -25,12 +25,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DockedSearchBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
@@ -41,9 +37,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -57,8 +51,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.adsama.weatherapp.R
+import com.adsama.weatherapp.ui.components.ThemeDropDownMenu
 import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
 import com.adsama.weatherapp.ui.theme.WeatherAppTheme
 
@@ -72,20 +66,28 @@ fun WeatherHomeScreen(
 ) {
     val homeUiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    val onLocationClickInternal = remember(viewModel, onLocationClick) {
+        { locationName: String ->
+            viewModel.updateSearchActive(false)
+            onLocationClick(locationName)
+        }
+    }
+
+    val onCurrentLocationClickInternal = remember(viewModel, onCurrentLocationClick) {
+        {
+            viewModel.updateSearchActive(false)
+            onCurrentLocationClick()
+        }
+    }
+
     WeatherHomeScreen(
         uiState = homeUiState,
         isDarkMode = isDarkMode,
         onToggleTheme = onToggleTheme,
         onSearchQueryChange = viewModel::searchLocation,
         onSearchActiveChange = viewModel::updateSearchActive,
-        onLocationClick = { locationName ->
-            viewModel.updateSearchActive(false)
-            onLocationClick(locationName)
-        },
-        onCurrentLocationClick = {
-            viewModel.updateSearchActive(false)
-            onCurrentLocationClick()
-        },
+        onLocationClick = onLocationClickInternal,
+        onCurrentLocationClick = onCurrentLocationClickInternal,
         onRefresh = viewModel::refreshAllLocations
     )
 }
@@ -134,48 +136,12 @@ fun WeatherHomeContent(
     onCurrentLocationClick: () -> Unit,
     onRefresh: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(R.string.app_name),
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                painter = if (isDarkMode) painterResource(R.drawable.dark_mode) else painterResource(
-                                    R.drawable.light_mode
-                                ),
-                                contentDescription = "Menu",
-                                tint = MaterialTheme.colorScheme.onBackground
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode") },
-                                onClick = {
-                                    onToggleTheme()
-                                    showMenu = false
-                                }
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            WeatherHomeTopAppBar(
+                isDarkMode = isDarkMode,
+                onToggleTheme = onToggleTheme
             )
         }
     ) { paddingValues ->
@@ -187,98 +153,157 @@ fun WeatherHomeContent(
         ) {
             Spacer(modifier = Modifier.height(20.dp))
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .zIndex(1f)
-            ) {
-                DockedSearchBar(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth(),
-                    inputField = {
-                        SearchBarDefaults.InputField(
-                            modifier = Modifier.fillMaxWidth(),
-                            query = uiState.searchQuery,
-                            onQueryChange = onSearchQueryChange,
-                            onSearch = { onSearchActiveChange(false) },
-                            expanded = uiState.isSearchActive,
-                            onExpandedChange = onSearchActiveChange,
-                            placeholder = { Text(stringResource(R.string.etv_hint)) },
-                            leadingIcon = {
-                                Icon(
-                                    painter = painterResource(R.drawable.search),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            },
+            WeatherSearchBarSection(
+                query = uiState.searchQuery,
+                onQueryChange = onSearchQueryChange,
+                isActive = uiState.isSearchActive,
+                onActiveChange = onSearchActiveChange,
+                suggestions = uiState.searchSuggestions,
+                onLocationClick = onLocationClick,
+                onCurrentLocationClick = onCurrentLocationClick
+            )
+
+            val isRefreshingInternal = remember(uiState.refreshingLocationIds, uiState.isLocalDataLoading) {
+                uiState.refreshingLocationIds.isNotEmpty() || uiState.isLocalDataLoading
+            }
+
+            WeatherSavedLocationsSection(
+                savedLocations = uiState.savedLocations,
+                isLocalDataLoading = isRefreshingInternal,
+                onRefresh = onRefresh,
+                onLocationClick = onLocationClick
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeatherHomeTopAppBar(
+    isDarkMode: Boolean,
+    onToggleTheme: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            Text(
+                text = stringResource(R.string.app_name),
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        },
+        actions = {
+            ThemeDropDownMenu(
+                isDarkMode = isDarkMode,
+                onToggleTheme = onToggleTheme
+            )
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background
+        )
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeatherSearchBarSection(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    isActive: Boolean,
+    onActiveChange: (Boolean) -> Unit,
+    suggestions: List<WeatherLocationUiModel>,
+    onLocationClick: (String) -> Unit,
+    onCurrentLocationClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .zIndex(1f)
+    ) {
+        DockedSearchBar(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth(),
+            inputField = {
+                SearchBarDefaults.InputField(
+                    modifier = Modifier.fillMaxWidth(),
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onSearch = { onActiveChange(false) },
+                    expanded = isActive,
+                    onExpandedChange = onActiveChange,
+                    placeholder = { Text(stringResource(R.string.etv_hint)) },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(R.drawable.search),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     },
-                    expanded = uiState.isSearchActive,
-                    onExpandedChange = onSearchActiveChange,
-                    colors = SearchBarDefaults.colors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                )
+            },
+            expanded = isActive,
+            onExpandedChange = onActiveChange,
+            colors = SearchBarDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+            ) {
+                item(contentType = "current_location") {
+                    CurrentLocationRow(onClick = onCurrentLocationClick)
+                }
+                itemsIndexed(
+                    items = suggestions,
+                    key = { index, it -> "${it.name}_${it.region}_${it.country}_$index" },
+                    contentType = { _, _ -> "search_suggestion" }
+                ) { _, suggestion ->
+                    SearchSuggestionItem(
+                        suggestion = suggestion,
+                        onLocationClick = onLocationClick
                     )
-                ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface)
-                    ) {
-                        item(contentType = "current_location") {
-                            CurrentLocationRow(onClick = onCurrentLocationClick)
-                        }
-                        itemsIndexed(
-                            items = uiState.searchSuggestions,
-                            key = { index, it -> "${it.name}_${it.region}_${it.country}_$index" },
-                            contentType = { _, _ -> "search_suggestion" }
-                        ) { _, suggestion ->
-                            SearchSuggestionItem(
-                                suggestion = suggestion,
-                                onClick = { onLocationClick("${suggestion.name}, ${suggestion.region}, ${suggestion.country}") }
-                            )
-                        }
-                    }
                 }
             }
+        }
+    }
+}
 
-            if (uiState.refreshingLocationIds.isNotEmpty()) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            }
-
-            PullToRefreshBox(
-                isRefreshing = uiState.isLocalDataLoading,
-                onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize()
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeatherSavedLocationsSection(
+    savedLocations: List<WeatherLocationUiModel>,
+    isLocalDataLoading: Boolean,
+    onRefresh: () -> Unit,
+    onLocationClick: (String) -> Unit
+) {
+    PullToRefreshBox(
+        isRefreshing = isLocalDataLoading,
+        onRefresh = onRefresh,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        if (savedLocations.isEmpty()) {
+            WeatherHomeEmptyScreen(modifier = Modifier.align(Alignment.Center))
+        } else {
+            LazyColumn(
+                state = rememberLazyListState(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 10.dp),
+                contentPadding = PaddingValues(vertical = 10.dp)
             ) {
-                if (uiState.savedLocations.isEmpty()) {
-                    WeatherHomeEmptyScreen(modifier = Modifier.align(Alignment.Center))
-                } else {
-                    LazyColumn(
-                        state = rememberLazyListState(),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(top = 10.dp),
-                        contentPadding = PaddingValues(vertical = 10.dp)
-                    ) {
-                        items(
-                            items = uiState.savedLocations,
-                            key = { it.id },
-                            contentType = { "saved_location" }
-                        ) { location ->
-                            SavedLocationItem(
-                                location = location,
-                                onClick = { onLocationClick("${location.name}, ${location.region}, ${location.country}") }
-                            )
-                        }
-                    }
+                items(
+                    items = savedLocations,
+                    key = { it.id },
+                    contentType = { "saved_location" }
+                ) { location ->
+                    SavedLocationItem(
+                        location = location,
+                        onLocationClick = onLocationClick
+                    )
                 }
             }
         }
@@ -310,11 +335,18 @@ fun CurrentLocationRow(onClick: () -> Unit) {
 }
 
 @Composable
-fun SearchSuggestionItem(suggestion: WeatherLocationUiModel, onClick: () -> Unit) {
+fun SearchSuggestionItem(
+    suggestion: WeatherLocationUiModel,
+    onLocationClick: (String) -> Unit
+) {
+    val clickAction =
+        remember(suggestion.name, suggestion.region, suggestion.country, onLocationClick) {
+            { onLocationClick("${suggestion.name}, ${suggestion.region}, ${suggestion.country}") }
+        }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(onClick = clickAction)
             .padding(16.dp)
     ) {
         Text(text = suggestion.name, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
@@ -329,14 +361,18 @@ fun SearchSuggestionItem(suggestion: WeatherLocationUiModel, onClick: () -> Unit
 @Composable
 fun SavedLocationItem(
     location: WeatherLocationUiModel,
-    onClick: () -> Unit,
+    onLocationClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val clickAction = remember(location.name, location.region, location.country, onLocationClick) {
+        { onLocationClick("${location.name}, ${location.region}, ${location.country}") }
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clickable(onClick = onClick),
+            .clickable(onClick = clickAction),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -368,10 +404,7 @@ fun SavedLocationItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(location.conditionIcon)
-                        .crossfade(false)
-                        .build(),
+                    model = location.conditionIcon,
                     contentDescription = location.conditionText,
                     modifier = Modifier.size(40.dp)
                 )
@@ -470,8 +503,9 @@ fun SearchSuggestionItemPreview() {
                 temperature = "25°C",
                 conditionText = "Sunny",
                 conditionIcon = ""
-            )
-        ) {}
+            ),
+            onLocationClick = {}
+        )
     }
 }
 
@@ -489,7 +523,7 @@ fun SavedLocationItemPreview() {
                 conditionText = "Sunny",
                 conditionIcon = ""
             ),
-            onClick = {}
+            onLocationClick = {}
         )
     }
 }

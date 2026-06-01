@@ -80,6 +80,7 @@ dependencies {
 
     baselineProfile(project(":baselineprofile"))
     testImplementation(libs.junit)
+    androidTestImplementation(libs.dejavu)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.espresso)

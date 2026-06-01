@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -34,9 +32,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -48,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import com.adsama.weatherapp.ui.components.ThemeDropDownMenu
 import com.adsama.weatherapp.R
 import com.adsama.weatherapp.ui.model.AlertUiModel
 import com.adsama.weatherapp.ui.model.DailyForecastUiModel
@@ -89,8 +85,6 @@ fun WeatherDetailScreen(
     onSaveLocation: () -> Unit,
     onRemoveLocation: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -118,28 +112,10 @@ fun WeatherDetailScreen(
                             )
                         }
                     }
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                painter = if (isDarkMode) painterResource(R.drawable.dark_mode) else painterResource(
-                                    R.drawable.light_mode
-                                ),
-                                contentDescription = "Menu"
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text(if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode") },
-                                onClick = {
-                                    onToggleTheme()
-                                    showMenu = false
-                                }
-                            )
-                        }
-                    }
+                    ThemeDropDownMenu(
+                        isDarkMode = isDarkMode,
+                        onToggleTheme = onToggleTheme
+                    )
                 }
             )
         }

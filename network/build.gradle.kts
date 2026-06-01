@@ -13,6 +13,9 @@ android {
         minSdk = rootProject.extra["minSdk"] as Int
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        buildConfigField("String", "BASE_URL", "\"https://api.weatherapi.com/v1/\"")
+        buildConfigField("String", "API_KEY", "\"${property("API_KEY")}\"")
     }
 
     buildTypes {
@@ -24,8 +27,6 @@ android {
             )
         }
         debug {
-            buildConfigField("String", "BASE_URL", "\"https://api.weatherapi.com/v1/\"")
-            buildConfigField("String", "API_KEY", "\"${property("API_KEY")}\"")
         }
     }
     compileOptions {
