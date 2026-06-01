@@ -2,6 +2,7 @@ package com.adsama.data
 
 import com.adsama.domain.LocalWeatherDataSource
 import com.adsama.domain.RemoteWeatherDataSource
+import com.adsama.domain.TimeProvider
 import com.adsama.domain.WeatherConstants
 import com.adsama.domain.WeatherDataSource
 import com.adsama.domain.model.Result
@@ -12,7 +13,8 @@ import javax.inject.Inject
 
 class WeatherDataRepository @Inject constructor(
     private val localWeatherDataSource: LocalWeatherDataSource,
-    private val remoteWeatherDataSource: RemoteWeatherDataSource
+    private val remoteWeatherDataSource: RemoteWeatherDataSource,
+    private val timeProvider: TimeProvider
 ) : WeatherDataSource {
 
     override suspend fun getForecast(
@@ -20,7 +22,7 @@ class WeatherDataRepository @Inject constructor(
         forceRefresh: Boolean
     ): Result<WeatherReport> {
         val localResult = localWeatherDataSource.fetchForecast(location)
-        val currentTime = System.currentTimeMillis()
+        val currentTime = timeProvider.getCurrentTimeMillis()
 
         // If we have local data, check if it's still fresh
         if (localResult is Result.Success) {
@@ -46,7 +48,7 @@ class WeatherDataRepository @Inject constructor(
                             temperature = freshReport.current.tempC,
                             conditionText = freshReport.current.conditionText,
                             conditionIcon = freshReport.current.conditionIcon,
-                            lastUpdatedEpoch = System.currentTimeMillis(),
+                            lastUpdatedEpoch = timeProvider.getCurrentTimeMillis(),
                             report = freshReport
                         )
                     )
