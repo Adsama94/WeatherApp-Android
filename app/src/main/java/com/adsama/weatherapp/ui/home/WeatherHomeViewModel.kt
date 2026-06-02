@@ -41,7 +41,8 @@ class WeatherHomeViewModel @Inject constructor(
     private val deleteLocationUseCase: DeleteLocationUseCase,
     private val fetchCurrentWeatherUseCase: FetchCurrentWeatherUseCase,
     private val saveLocationUseCase: SaveLocationUseCase,
-    private val fetchCurrentLocationUseCase: FetchCurrentLocationUseCase
+    private val fetchCurrentLocationUseCase: FetchCurrentLocationUseCase,
+    private val dispatcherProvider: com.adsama.domain.DispatcherProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -90,14 +91,14 @@ class WeatherHomeViewModel @Inject constructor(
                         }
                     }
                 }
-            }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+            }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
     }
 
     fun refreshAllLocations(force: Boolean = false) {
         val currentState = _uiState.value
         if (currentState.savedLocations.isEmpty()) return
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             val currentTime = System.currentTimeMillis()
 
             // We'll observe the results via observeSavedLocations, 
@@ -145,11 +146,11 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update { it.copy(isSearchLoading = false, error = result.error) }
                 }
             }
-        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
     }
 
     fun removeLocationFromSaved(locationId: Long) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             _uiState.update { it.copy(isLocalDataLoading = true) }
 
             // Temporary reconstruction for deletion logic
@@ -189,7 +190,7 @@ class WeatherHomeViewModel @Inject constructor(
     }
 
     fun fetchLocation() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             _uiState.update { it.copy(isSearchLoading = true) }
             when (val result = fetchCurrentLocationUseCase()) {
                 is Result.Success -> {
@@ -233,6 +234,6 @@ class WeatherHomeViewModel @Inject constructor(
                     }
                 }
             }
-        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
     }
 }

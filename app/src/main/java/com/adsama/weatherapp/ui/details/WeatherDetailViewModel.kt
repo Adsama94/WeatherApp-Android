@@ -30,7 +30,8 @@ class WeatherDetailViewModel @Inject constructor(
     private val fetchCurrentWeatherUseCase: FetchCurrentWeatherUseCase,
     private val getSavedLocationUseCase: FetchSaveLocationUseCase,
     private val saveLocationUseCase: SaveLocationUseCase,
-    private val deleteLocationUseCase: DeleteLocationUseCase
+    private val deleteLocationUseCase: DeleteLocationUseCase,
+    private val dispatcherProvider: com.adsama.domain.DispatcherProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -53,7 +54,7 @@ class WeatherDetailViewModel @Inject constructor(
 
                 else -> {}
             }
-        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
     }
 
     fun getForecastData(location: String) {
@@ -85,12 +86,12 @@ class WeatherDetailViewModel @Inject constructor(
                     }
                 }
             }
-        }.flowOn(Dispatchers.IO).launchIn(viewModelScope)
+        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
     }
 
     fun saveLocationData() {
         val report = currentReport ?: return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             _uiState.update { it.copy(isLoading = true) }
             saveLocationUseCase(report.location.copy(report = report)).onEach { result ->
                 when (result) {
@@ -118,7 +119,7 @@ class WeatherDetailViewModel @Inject constructor(
         val locationName = currentReport?.location?.name ?: return
         val locationToDelete = savedLocations.find { it.name == locationName } ?: return
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(dispatcherProvider.io) {
             _uiState.update { it.copy(isLoading = true) }
             deleteLocationUseCase(locationToDelete).onEach { result ->
                 when (result) {

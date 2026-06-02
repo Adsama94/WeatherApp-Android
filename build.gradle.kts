@@ -28,16 +28,6 @@ dependencies {
     kover(project(":model"))
 }
 
-kover {
-    reports {
-        filters {
-            includes {
-                classes("com.adsama.*")
-            }
-        }
-    }
-}
-
 extra["compileSdk"] = libs.versions.compileSdk.get().toInt()
 extra["minSdk"] = libs.versions.minSdk.get().toInt()
 extra["targetSdk"] = libs.versions.targetSdk.get().toInt()
