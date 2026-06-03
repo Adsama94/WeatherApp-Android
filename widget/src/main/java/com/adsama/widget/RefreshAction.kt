@@ -33,7 +33,9 @@ class RefreshAction : ActionCallback {
         val dataSource = entryPoint.weatherDataSource()
         
         // Fetch current locations and refresh the first one for the widget
-        val savedLocationsResult = dataSource.getAllSavedLocations().first()
+        val savedLocationsResult = dataSource.getAllSavedLocations()
+            .first { it !is Result.Loading }
+            
         if (savedLocationsResult is Result.Success) {
             val locations = savedLocationsResult.data
             val locationToRefresh = locations.find { it.name == "Current Location" } ?: locations.firstOrNull()

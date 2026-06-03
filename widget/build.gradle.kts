@@ -20,7 +20,7 @@ android {
         sourceCompatibility = rootProject.extra["javaVersion"] as JavaVersion
         targetCompatibility = rootProject.extra["javaVersion"] as JavaVersion
     }
-    
+
     buildFeatures {
         compose = true
     }

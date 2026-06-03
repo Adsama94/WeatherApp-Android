@@ -23,7 +23,8 @@ class WeatherSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return withContext(dispatcherProvider.io) {
             try {
-                val savedLocationsResult = weatherDataSource.getAllSavedLocations().first()
+                val savedLocationsResult = weatherDataSource.getAllSavedLocations()
+                    .first { it !is Result.Loading }
                 
                 if (savedLocationsResult is com.adsama.domain.model.Result.Success) {
                     val locations = savedLocationsResult.data
