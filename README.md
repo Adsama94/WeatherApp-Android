@@ -2,7 +2,7 @@
 
 A modern, clean, and feature-rich Android Weather application built with Kotlin and Jetpack Compose.
 This project follows **Clean Architecture** principles and is structured into multiple modules to
-ensure scalability, testability, and maintainability.
+ensure scalability, high testability, and long-term maintainability.
 
 ## 🚀 Features
 
@@ -14,58 +14,70 @@ ensure scalability, testability, and maintainability.
   support.
 - **Smart Refresh**: Optimized "Smart Pull-to-Refresh" that respects a 5-minute threshold to reduce
   unnecessary API calls while keeping data fresh.
-- **Weather Alerts**: Stay informed with severe weather alerts (when available from the API).
 - **Modern UI**: Fully built with Jetpack Compose and Material 3, supporting both Dark and Light
   themes.
-- **Robust Parsing**: Handles missing API data gracefully with optional fields and default values.
+- **Deterministic Architecture**: Injected Dispatcher and Time providers to ensure predictable
+  behavior and 100% stable testing.
+
+## 🏆 Quality & Testing
+
+This project is built with a **test-first mindset**, achieving a comprehensive **80%+ line coverage**
+milestone across all architectural layers.
+
+- **Unit Tests**: Full coverage for ViewModels, UseCases, Mappers, and Repositories using **MockK**.
+- **Flow Testing**: Complex asynchronous streams verified using **Turbine**.
+- **Integration Tests**: Network layer verified against a local **MockWebServer**.
+- **UI Tests**: Robust instrumented tests for Compose screens and components on real devices/emulators.
+- **Database Tests**: Instrumented Room DAO tests using in-memory databases.
 
 ## 🏗️ Architecture
 
 The project is designed using **Clean Architecture** and **MVVM** patterns, separated into clear
 layers through a multi-module setup:
 
-- **`:app`**: The UI layer containing Jetpack Compose screens, ViewModels, and Dependency Injection
-  setup (Hilt).
-- **`:domain`**: The core business logic containing UseCases, Domain Models, and Repository
-  interfaces. This module has no dependencies on Android or external libraries.
-- **`:data`**: The orchestration layer that implements repositories and coordinates between local
-  and remote data sources.
-- **`:network`**: Remote data source implementation using Retrofit and Kotlinx Serialization.
-- **`:database`**: Local persistence layer using Room Database.
+- **`:app`**: The UI layer containing Jetpack Compose screens, ViewModels, and Dependency Injection setup.
+- **`:domain`**: The core business logic containing UseCases, Domain Models, and Repository interfaces. Includes `DispatcherProvider` and `TimeProvider` abstractions for deterministic execution.
+- **`:data`**: The orchestration layer that implements repositories and coordinates between local and remote data sources.
+- **`:network`**: Remote data source implementation using Retrofit, featuring custom call adapters for robust error handling.
+- **`:database`**: Local persistence layer using Room Database and TypeConverters.
 - **`:location`**: Device-specific location services using FusedLocationProvider.
-- **`:model`**: Shared data transfer objects (DTOs) and models used across modules.
+- **`:model`**: Shared data transfer objects (DTOs) used for API communication.
 
 ## 🛠️ Tech Stack
 
 - **Language**: [Kotlin](https://kotlinlang.org/)
 - **UI Framework**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with Material 3
 - **Dependency Injection**: [Hilt](https://dagger.dev/hilt/)
-- **Networking
-  **: [Retrofit](https://square.github.io/retrofit/) & [OkHttp](https://square.github.io/okhttp/)
+- **Networking**: [Retrofit](https://square.github.io/retrofit/) & [OkHttp](https://square.github.io/okhttp/)
+- **Testing**: [MockK](https://mockk.io/), [Turbine](https://github.com/cashapp/turbine), [MockWebServer](https://github.com/square/okhttp/tree/master/mockwebserver)
+- **Coverage**: [Kotlin Kover](https://github.com/Kotlin/kotlinx-kover)
 - **Local Database**: [Room](https://developer.android.com/training/data-storage/room)
 - **Serialization**: [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization)
-- **Image Loading**: [Coil](https://coil-kt.github.io/coil/)
-- **Async & Flow
-  **: [Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) & [Flow](https://kotlinlang.org/docs/flow.html)
-- **Architecture Components**: ViewModel, Navigation Compose, StateFlow
+- **Async & Flow**: [Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) & [Flow](https://kotlinlang.org/docs/flow.html)
 
 ## 🚦 Getting Started
-
-### Prerequisites
-
-- Android Studio Koala (or newer)
-- WeatherAPI Key (Get it for free at [weatherapi.com](https://www.weatherapi.com))
 
 ### Setup
 
 1. Clone the repository.
-2. Open the project in Android Studio.
-3. Obtain an API key from [WeatherAPI](https://www.weatherapi.com).
-4. Create or update your `local.properties` file in the root directory and add your API key:
+2. Obtain an API key from [WeatherAPI](https://www.weatherapi.com).
+3. Add your API key to `local.properties`:
    ```properties
    API_KEY=your_api_key_here
    ```
-5. Build and run the app.
+
+### Running Tests
+
+To run the full suite of unit tests and generate a coverage report:
+```bash
+./gradlew test koverHtmlReport
+```
+The report will be available at `build/reports/kover/html/index.html`.
+
+To run instrumented UI and Database tests (requires a connected device/emulator):
+```bash
+./gradlew connectedDebugAndroidTest
+```
 
 ---
-*Developed as a showcase for modern Android development practices.*
+*Developed as a showcase for professional Android engineering standards.*

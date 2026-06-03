@@ -1,21 +1,30 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# Retrofit
+-keepattributes Signature, InnerClasses, EnclosingMethod
+-keep @retrofit2.http.* interface * { <methods>; }
+-dontwarn retrofit2.**
+-keep class retrofit2.** { *; }
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# OkHttp
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Kotlinx Serialization
+-keepattributes *Annotation*, EnclosingMethod, InnerClasses
+-keepclassmembers class ** {
+    @kotlinx.serialization.Serializable <fields>;
+}
+-keepclassmembers class ** {
+    public static ** Companion;
+}
+-keep class **$$serializer { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Keep DTOs in model module
+-keep class com.adsama.model.** { *; }
+
+# Keep the network service interface
+-keep interface com.adsama.network.WeatherService { *; }
+
+# Custom NetworkResponse Adapter
+-keep class com.adsama.network.adapter.** { *; }
+-keep class com.adsama.network.adapter.NetworkResponse { *; }
+-keep class com.adsama.network.adapter.NetworkResponse$* { *; }

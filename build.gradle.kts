@@ -11,6 +11,21 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.android.test) apply false
     alias(libs.plugins.baselineprofile) apply false
+    alias(libs.plugins.kotlin.kover)
+}
+
+subprojects {
+    apply(plugin = "org.jetbrains.kotlinx.kover")
+}
+
+dependencies {
+    kover(project(":app"))
+    kover(project(":domain"))
+    kover(project(":data"))
+    kover(project(":network"))
+    kover(project(":database"))
+    kover(project(":location"))
+    kover(project(":model"))
 }
 
 extra["compileSdk"] = libs.versions.compileSdk.get().toInt()

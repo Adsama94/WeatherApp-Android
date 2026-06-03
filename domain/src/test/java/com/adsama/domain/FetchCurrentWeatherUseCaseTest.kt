@@ -56,4 +56,5 @@ class FetchCurrentWeatherUseCaseTest {
         assertTrue(result is Result.Error<*>)
         assertEquals(mockError, (result as Result.Error<*>).error)
     }
+
 }

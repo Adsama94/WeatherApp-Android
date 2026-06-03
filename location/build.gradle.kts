@@ -18,6 +18,12 @@ android {
         sourceCompatibility = rootProject.extra["javaVersion"] as JavaVersion
         targetCompatibility = rootProject.extra["javaVersion"] as JavaVersion
     }
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1,LICENSE.md,LICENSE-notice.md}"
+        }
+    }
 }
 
 dependencies {
@@ -28,4 +34,10 @@ dependencies {
     ksp(libs.dagger.hilt.android.compiler)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.rules)
+    androidTestImplementation(libs.mockk)
 }
