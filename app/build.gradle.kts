@@ -56,6 +56,12 @@ dependencies {
     implementation(project(":model"))
     implementation(project(":network"))
     implementation(project(":location"))
+    implementation(project(":sync"))
+    implementation(project(":widget"))
+
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -92,4 +98,4 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.rules)
-    }
+}
