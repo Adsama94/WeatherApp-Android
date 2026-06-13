@@ -22,4 +22,7 @@ interface WeatherLocationDAO {
     @Delete
     suspend fun deleteLocationInfo(persistedWeatherModel: PersistedWeatherModel)
 
+    @Query("DELETE FROM `PersistedWeatherModel` WHERE locationId = :locationId")
+    suspend fun deleteLocationById(locationId: Long)
+
 }

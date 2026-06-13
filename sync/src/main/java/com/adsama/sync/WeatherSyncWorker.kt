@@ -25,16 +25,16 @@ class WeatherSyncWorker @AssistedInject constructor(
             try {
                 val savedLocationsResult = weatherDataSource.getAllSavedLocations()
                     .first { it !is Result.Loading }
-                
+
                 if (savedLocationsResult is com.adsama.domain.model.Result.Success) {
                     val locations = savedLocationsResult.data
-                    
+
                     // Refresh each location
                     locations.forEach { location ->
-                        // getForecast with forceRefresh = true will update the local DB
-                        weatherDataSource.getForecast(location.name, forceRefresh = true)
+                        // getForecast will update the local DB
+                        weatherDataSource.getForecast(location.name)
                     }
-                    
+
                     Result.success()
                 } else {
                     // If we couldn't even read the local DB, we might want to retry

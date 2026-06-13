@@ -12,12 +12,10 @@ import com.adsama.domain.model.WeatherLocation
 import com.adsama.domain.model.WeatherReport
 import com.adsama.weatherapp.ui.mapper.toDetailUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -31,7 +29,6 @@ class WeatherDetailViewModel @Inject constructor(
     private val getSavedLocationUseCase: FetchSaveLocationUseCase,
     private val saveLocationUseCase: SaveLocationUseCase,
     private val deleteLocationUseCase: DeleteLocationUseCase,
-    private val dispatcherProvider: com.adsama.domain.DispatcherProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -54,7 +51,7 @@ class WeatherDetailViewModel @Inject constructor(
 
                 else -> {}
             }
-        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
+        }.launchIn(viewModelScope)
     }
 
     fun getForecastData(location: String) {
@@ -86,12 +83,12 @@ class WeatherDetailViewModel @Inject constructor(
                     }
                 }
             }
-        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
+        }.launchIn(viewModelScope)
     }
 
     fun saveLocationData() {
         val report = currentReport ?: return
-        viewModelScope.launch(dispatcherProvider.io) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             saveLocationUseCase(report.location.copy(report = report)).onEach { result ->
                 when (result) {
@@ -119,9 +116,9 @@ class WeatherDetailViewModel @Inject constructor(
         val locationName = currentReport?.location?.name ?: return
         val locationToDelete = savedLocations.find { it.name == locationName } ?: return
 
-        viewModelScope.launch(dispatcherProvider.io) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            deleteLocationUseCase(locationToDelete).onEach { result ->
+            deleteLocationUseCase(locationToDelete.id).onEach { result ->
                 when (result) {
                     is Result.Success -> {
                         _uiState.update { it.copy(isLoading = false, isPersisted = false) }

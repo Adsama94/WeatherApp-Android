@@ -1,18 +1,27 @@
 package com.adsama.weatherapp.ui.details
 
-import app.cash.turbine.test
 import com.adsama.domain.DeleteLocationUseCase
 import com.adsama.domain.DispatcherProvider
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
-import com.adsama.domain.model.*
-import io.mockk.*
+import com.adsama.domain.model.CurrentWeather
+import com.adsama.domain.model.DomainError
+import com.adsama.domain.model.Result
+import com.adsama.domain.model.WeatherLocation
+import com.adsama.domain.model.WeatherReport
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -29,24 +38,17 @@ class WeatherDetailViewModelTest {
 
     private lateinit var viewModel: WeatherDetailViewModel
     private val testDispatcher = StandardTestDispatcher()
-    
-    private val testDispatcherProvider = object : DispatcherProvider {
-        override val main: CoroutineDispatcher = testDispatcher
-        override val io: CoroutineDispatcher = testDispatcher
-        override val default: CoroutineDispatcher = testDispatcher
-    }
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         every { getSavedLocationUseCase(Unit) } returns flowOf(Result.Success(emptyList()))
-        
+
         viewModel = WeatherDetailViewModel(
             fetchCurrentWeatherUseCase,
             getSavedLocationUseCase,
             saveLocationUseCase,
-            deleteLocationUseCase,
-            testDispatcherProvider
+            deleteLocationUseCase
         )
     }
 
@@ -58,14 +60,23 @@ class WeatherDetailViewModelTest {
     @Test
     fun `getForecastData should update uiState with weather data on success`() = runTest {
         val locationName = "London"
-        val mockLocation = WeatherLocation(name = "London", region = "", country = "", latitude = 0.0, longitude = 0.0)
+        val mockLocation = WeatherLocation(
+            name = "London",
+            region = "",
+            country = "",
+            latitude = 0.0,
+            longitude = 0.0
+        )
         val mockReport = WeatherReport(
             location = mockLocation,
             current = CurrentWeather(20.0, 19.0, "Sunny", "", 10.0, "N", 0.0, 5.0),
             forecast = emptyList(),
             alerts = emptyList()
         )
-        every { fetchCurrentWeatherUseCase(any()) } returns flowOf(Result.Loading(), Result.Success(mockReport))
+        every { fetchCurrentWeatherUseCase(any()) } returns flowOf(
+            Result.Loading(),
+            Result.Success(mockReport)
+        )
 
         viewModel.getForecastData(locationName)
         runCurrent()
@@ -80,7 +91,10 @@ class WeatherDetailViewModelTest {
     fun `getForecastData should update uiState with error on failure`() = runTest {
         val locationName = "Invalid"
         val error = DomainError.ApiError(404, "Not Found")
-        every { fetchCurrentWeatherUseCase(any()) } returns flowOf(Result.Loading(), Result.Error(error))
+        every { fetchCurrentWeatherUseCase(any()) } returns flowOf(
+            Result.Loading(),
+            Result.Error(error)
+        )
 
         viewModel.getForecastData(locationName)
         runCurrent()
@@ -92,7 +106,13 @@ class WeatherDetailViewModelTest {
 
     @Test
     fun `saveLocationData should transition through loading and success`() = runTest {
-        val mockLocation = WeatherLocation(name = "London", region = "", country = "", latitude = 0.0, longitude = 0.0)
+        val mockLocation = WeatherLocation(
+            name = "London",
+            region = "",
+            country = "",
+            latitude = 0.0,
+            longitude = 0.0
+        )
         val mockReport = WeatherReport(
             location = mockLocation,
             current = CurrentWeather(20.0, 19.0, "Sunny", "", 10.0, "N", 0.0, 5.0),
@@ -100,11 +120,14 @@ class WeatherDetailViewModelTest {
             alerts = emptyList()
         )
         every { fetchCurrentWeatherUseCase(any()) } returns flowOf(Result.Success(mockReport))
-        coEvery { saveLocationUseCase(any()) } returns flowOf(Result.Loading(), Result.Success(Unit))
+        coEvery { saveLocationUseCase(any()) } returns flowOf(
+            Result.Loading(),
+            Result.Success(Unit)
+        )
 
         viewModel.getForecastData("London")
         runCurrent()
-        
+
         viewModel.saveLocationData()
         runCurrent()
 
@@ -115,24 +138,29 @@ class WeatherDetailViewModelTest {
     @Test
     fun `checkIfLocationIsSaved should update isPersisted correctly`() = runTest {
         val locationName = "London"
-        val mockLocation = WeatherLocation(name = "London", region = "", country = "", latitude = 0.0, longitude = 0.0)
+        val mockLocation = WeatherLocation(
+            name = "London",
+            region = "",
+            country = "",
+            latitude = 0.0,
+            longitude = 0.0
+        )
         val mockReport = WeatherReport(
             location = mockLocation,
             current = CurrentWeather(20.0, 19.0, "Sunny", "", 10.0, "N", 0.0, 5.0),
             forecast = emptyList(),
             alerts = emptyList()
         )
-        
+
         every { getSavedLocationUseCase(Unit) } returns flowOf(Result.Success(listOf(mockLocation)))
-        
+
         viewModel = WeatherDetailViewModel(
             fetchCurrentWeatherUseCase,
             getSavedLocationUseCase,
             saveLocationUseCase,
-            deleteLocationUseCase,
-            testDispatcherProvider
+            deleteLocationUseCase
         )
-        
+
         every { fetchCurrentWeatherUseCase(any()) } returns flowOf(Result.Success(mockReport))
 
         viewModel.getForecastData(locationName)

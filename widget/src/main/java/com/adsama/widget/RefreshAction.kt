@@ -14,7 +14,7 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 
 class RefreshAction : ActionCallback {
-    
+
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface RefreshActionInterface {
@@ -31,20 +31,21 @@ class RefreshAction : ActionCallback {
             RefreshActionInterface::class.java
         )
         val dataSource = entryPoint.weatherDataSource()
-        
+
         // Fetch current locations and refresh the first one for the widget
         val savedLocationsResult = dataSource.getAllSavedLocations()
             .first { it !is Result.Loading }
-            
+
         if (savedLocationsResult is Result.Success) {
             val locations = savedLocationsResult.data
-            val locationToRefresh = locations.find { it.name == "Current Location" } ?: locations.firstOrNull()
-            
+            val locationToRefresh =
+                locations.find { it.name == "Current Location" } ?: locations.firstOrNull()
+
             locationToRefresh?.let {
-                dataSource.getForecast(it.name, forceRefresh = true)
+                dataSource.getForecast(it.name)
             }
         }
-        
+
         // Update the widget UI
         WeatherWidget().updateAll(context)
     }

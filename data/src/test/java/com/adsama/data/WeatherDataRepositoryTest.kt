@@ -1,9 +1,9 @@
 package com.adsama.data
 
+import com.adsama.domain.DispatcherProvider
 import com.adsama.domain.LocalWeatherDataSource
 import com.adsama.domain.RemoteWeatherDataSource
 import com.adsama.domain.TimeProvider
-import com.adsama.domain.WeatherConstants
 import com.adsama.domain.model.CurrentWeather
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
@@ -15,6 +15,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,6 +27,7 @@ class WeatherDataRepositoryTest {
     private lateinit var localDataSource: LocalWeatherDataSource
     private lateinit var remoteDataSource: RemoteWeatherDataSource
     private lateinit var timeProvider: TimeProvider
+    private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var repository: WeatherDataRepository
     private val locationName = "London"
 
@@ -61,31 +63,25 @@ class WeatherDataRepositoryTest {
         localDataSource = mockk()
         remoteDataSource = mockk()
         timeProvider = mockk()
-        repository = WeatherDataRepository(localDataSource, remoteDataSource, timeProvider)
+        dispatcherProvider = mockk {
+            val testDispatcher = UnconfinedTestDispatcher()
+            every { io } returns testDispatcher
+            every { main } returns testDispatcher
+            every { default } returns testDispatcher
+        }
+        repository =
+            WeatherDataRepository(
+                localDataSource,
+                remoteDataSource,
+                timeProvider,
+                dispatcherProvider
+            )
     }
 
     @Test
-    fun `getForecast returns local data when fresh and not forced`() = runTest {
+    fun `getForecast always calls remote and updates local`() = runTest {
         val mockReport = createMockReport(mockLocation)
-        val locationWithReport = mockLocation.copy(report = mockReport)
-        val currentTime = 1000L + WeatherConstants.REFRESH_THRESHOLD_MS - 100
-
-        every { timeProvider.getCurrentTimeMillis() } returns currentTime
-        coEvery { localDataSource.fetchForecast(locationName) } returns Result.Success(
-            locationWithReport
-        )
-
-        val result = repository.getForecast(locationName, forceRefresh = false)
-
-        assertTrue(result is Result.Success)
-        assertEquals(mockReport, (result as Result.Success).data)
-        coVerify(exactly = 0) { remoteDataSource.getWeatherForecast(any()) }
-    }
-
-    @Test
-    fun `getForecast calls remote when stale`() = runTest {
-        val currentTime = 1000L + WeatherConstants.REFRESH_THRESHOLD_MS + 100
-        val mockReport = createMockReport(mockLocation)
+        val currentTime = 1000L
 
         every { timeProvider.getCurrentTimeMillis() } returns currentTime
         coEvery { localDataSource.fetchForecast(locationName) } returns Result.Success(mockLocation)
@@ -94,10 +90,9 @@ class WeatherDataRepositoryTest {
         )
         coEvery { localDataSource.saveLocation(any()) } returns Result.Success(Unit)
 
-        val result = repository.getForecast(locationName, forceRefresh = false)
+        val result = repository.getForecast(locationName)
 
         assertTrue(result is Result.Success)
-        // We compare specific fields instead of whole object to avoid circular ref issues in toString/equals
         val actualReport = (result as Result.Success).data
         assertEquals(mockReport.current, actualReport.current)
         coVerify(exactly = 1) { remoteDataSource.getWeatherForecast(locationName) }
@@ -105,32 +100,10 @@ class WeatherDataRepositoryTest {
     }
 
     @Test
-    fun `getForecast calls remote when forced even if fresh`() = runTest {
-        val currentTime = 1000L + 100
-        val mockReport = createMockReport(mockLocation)
-
-        every { timeProvider.getCurrentTimeMillis() } returns currentTime
-        coEvery { localDataSource.fetchForecast(locationName) } returns Result.Success(mockLocation)
-        coEvery { remoteDataSource.getWeatherForecast(locationName) } returns Result.Success(
-            mockReport
-        )
-        coEvery { localDataSource.saveLocation(any()) } returns Result.Success(Unit)
-
-        val result = repository.getForecast(locationName, forceRefresh = true)
-
-        assertTrue(result is Result.Success)
-        val actualReport = (result as Result.Success).data
-        assertEquals(mockReport.current, actualReport.current)
-        coVerify(exactly = 1) { remoteDataSource.getWeatherForecast(locationName) }
-    }
-
-    @Test
     fun `getForecast returns local fallback when remote fails`() = runTest {
         val mockReport = createMockReport(mockLocation)
         val locationWithReport = mockLocation.copy(report = mockReport)
-        val currentTime = 1000L + WeatherConstants.REFRESH_THRESHOLD_MS + 100
 
-        every { timeProvider.getCurrentTimeMillis() } returns currentTime
         coEvery { localDataSource.fetchForecast(locationName) } returns Result.Success(
             locationWithReport
         )
@@ -138,10 +111,20 @@ class WeatherDataRepositoryTest {
             DomainError.NetworkError("No internet")
         )
 
-        val result = repository.getForecast(locationName, forceRefresh = false)
+        val result = repository.getForecast(locationName)
 
         assertTrue(result is Result.Success)
         assertEquals(mockReport, (result as Result.Success).data)
+    }
+
+    @Test
+    fun `getCachedForecast returns local data`() = runTest {
+        coEvery { localDataSource.fetchForecast(locationName) } returns Result.Success(mockLocation)
+
+        val result = repository.getCachedForecast(locationName)
+
+        assertTrue(result is Result.Success)
+        assertEquals(mockLocation, (result as Result.Success).data)
     }
 
     @Test
@@ -177,9 +160,9 @@ class WeatherDataRepositoryTest {
 
     @Test
     fun `deleteLocation propagates local success`() = runTest {
-        coEvery { localDataSource.deleteLocation(mockLocation) } returns Result.Success(Unit)
+        coEvery { localDataSource.deleteLocation(1L) } returns Result.Success(Unit)
 
-        val result = repository.deleteLocation(mockLocation)
+        val result = repository.deleteLocation(1L)
 
         assertTrue(result is Result.Success)
     }

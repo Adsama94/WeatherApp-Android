@@ -5,6 +5,7 @@ import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
 import com.adsama.domain.SearchLocationUseCase
+import com.adsama.domain.TimeProvider
 import com.adsama.domain.WeatherDataSource
 import dagger.Module
 import dagger.Provides
@@ -31,8 +32,11 @@ object ViewModelModule {
     }
 
     @Provides
-    fun provideCurrentWeatherUseCase(weatherDataSource: WeatherDataSource): FetchCurrentWeatherUseCase {
-        return FetchCurrentWeatherUseCase(weatherDataSource)
+    fun provideCurrentWeatherUseCase(
+        weatherDataSource: WeatherDataSource,
+        timeProvider: TimeProvider
+    ): FetchCurrentWeatherUseCase {
+        return FetchCurrentWeatherUseCase(weatherDataSource, timeProvider)
     }
 
     @Provides

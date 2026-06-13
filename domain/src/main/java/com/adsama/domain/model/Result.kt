@@ -2,6 +2,8 @@ package com.adsama.domain.model
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import java.io.IOException
+import kotlin.coroutines.cancellation.CancellationException
 
 sealed class Result<out T> {
     data class Loading<T>(val data: T? = null) : Result<T>()
@@ -18,8 +20,12 @@ abstract class ResultFlowUseCase<in P, R> {
                 is Result.Error -> emit(Result.Error(result.error, result.data))
                 is Result.Loading -> emit(Result.Loading(result.data))
             }
-        } catch (e: Exception) {
-            emit(Result.Error(DomainError.from(e)))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            emit(Result.Error(DomainError.NetworkError(e.message ?: "Network error")))
+        } catch (e: DomainError) {
+            emit(Result.Error(e))
         }
     }
 

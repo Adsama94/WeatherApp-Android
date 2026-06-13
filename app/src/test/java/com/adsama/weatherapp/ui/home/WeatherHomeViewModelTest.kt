@@ -1,21 +1,32 @@
 package com.adsama.weatherapp.ui.home
 
 import app.cash.turbine.test
-import com.adsama.domain.*
+import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.FetchCurrentLocationUseCase
+import com.adsama.domain.FetchCurrentWeatherUseCase
+import com.adsama.domain.FetchSaveLocationUseCase
+import com.adsama.domain.SearchLocationUseCase
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
-import io.mockk.*
-import kotlinx.coroutines.CoroutineDispatcher
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.*
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class WeatherHomeViewModelTest {
@@ -24,31 +35,22 @@ class WeatherHomeViewModelTest {
     private val getSavedLocationUseCase = mockk<FetchSaveLocationUseCase>(relaxed = true)
     private val deleteLocationUseCase = mockk<DeleteLocationUseCase>(relaxed = true)
     private val fetchCurrentWeatherUseCase = mockk<FetchCurrentWeatherUseCase>(relaxed = true)
-    private val saveLocationUseCase = mockk<SaveLocationUseCase>(relaxed = true)
     private val fetchCurrentLocationUseCase = mockk<FetchCurrentLocationUseCase>(relaxed = true)
 
     private lateinit var viewModel: WeatherHomeViewModel
     private val testDispatcher = StandardTestDispatcher()
-    
-    private val testDispatcherProvider = object : DispatcherProvider {
-        override val main: CoroutineDispatcher = testDispatcher
-        override val io: CoroutineDispatcher = testDispatcher
-        override val default: CoroutineDispatcher = testDispatcher
-    }
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         every { getSavedLocationUseCase(Unit) } returns flowOf(Result.Success(emptyList()))
-        
+
         viewModel = WeatherHomeViewModel(
             searchLocationUseCase,
             getSavedLocationUseCase,
             deleteLocationUseCase,
             fetchCurrentWeatherUseCase,
-            saveLocationUseCase,
-            fetchCurrentLocationUseCase,
-            testDispatcherProvider
+            fetchCurrentLocationUseCase
         )
     }
 
@@ -63,18 +65,16 @@ class WeatherHomeViewModelTest {
             WeatherLocation(1, "London", "", "", 0.0, 0.0, lastUpdatedEpoch = 0L)
         )
         every { getSavedLocationUseCase(Unit) } returns flowOf(Result.Success(locations))
-        
+
         viewModel = WeatherHomeViewModel(
             searchLocationUseCase,
             getSavedLocationUseCase,
             deleteLocationUseCase,
             fetchCurrentWeatherUseCase,
-            saveLocationUseCase,
-            fetchCurrentLocationUseCase,
-            testDispatcherProvider
+            fetchCurrentLocationUseCase
         )
 
-        advanceTimeBy(300)
+        advanceTimeBy(300.milliseconds)
         runCurrent()
 
         val state = viewModel.uiState.value

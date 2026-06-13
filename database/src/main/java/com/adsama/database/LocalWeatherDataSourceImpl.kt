@@ -1,5 +1,6 @@
 package com.adsama.database
 
+import com.adsama.domain.DispatcherProvider
 import com.adsama.domain.LocalWeatherDataSource
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
@@ -8,11 +9,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import kotlin.math.abs
 
 class LocalWeatherDataSourceImpl @Inject constructor(
-    private val weatherLocationDAO: WeatherLocationDAO
+    private val weatherLocationDAO: WeatherLocationDAO,
+    private val dispatcherProvider: DispatcherProvider
 ) : LocalWeatherDataSource {
 
     override fun fetchSavedLocations(): Flow<Result<List<WeatherLocation>>> {
@@ -32,26 +35,20 @@ class LocalWeatherDataSourceImpl @Inject constructor(
             }
     }
 
-    override suspend fun saveLocation(location: WeatherLocation): Result<Unit> {
-        return try {
+    override suspend fun saveLocation(location: WeatherLocation): Result<Unit> =
+        withContext(dispatcherProvider.io) {
             weatherLocationDAO.insertLocationInfo(location.toEntity())
             Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(DomainError.DatabaseError(e.message ?: "Failed to save location"))
         }
-    }
 
-    override suspend fun deleteLocation(location: WeatherLocation): Result<Unit> {
-        return try {
-            weatherLocationDAO.deleteLocationInfo(location.toEntity())
+    override suspend fun deleteLocation(locationId: Long): Result<Unit> =
+        withContext(dispatcherProvider.io) {
+            weatherLocationDAO.deleteLocationById(locationId)
             Result.Success(Unit)
-        } catch (e: Exception) {
-            Result.Error(DomainError.DatabaseError(e.message ?: "Failed to delete location"))
         }
-    }
 
-    override suspend fun fetchForecast(location: String): Result<WeatherLocation> {
-        return try {
+    override suspend fun fetchForecast(location: String): Result<WeatherLocation> =
+        withContext(dispatcherProvider.io) {
             val allSaved = weatherLocationDAO.getAllSavedLocationsOnce()
             val savedLocation = allSaved.find {
                 val compositeName = "${it.name}, ${it.region}, ${it.country}"
@@ -76,10 +73,7 @@ class LocalWeatherDataSourceImpl @Inject constructor(
             } else {
                 Result.Error(DomainError.DatabaseError("No cached forecast found for $location"))
             }
-        } catch (e: Exception) {
-            Result.Error(DomainError.DatabaseError(e.message ?: "Failed to fetch cached forecast"))
         }
-    }
 
 }
 

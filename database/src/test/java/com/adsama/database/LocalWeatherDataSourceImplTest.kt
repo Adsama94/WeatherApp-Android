@@ -1,6 +1,7 @@
 package com.adsama.database
 
 import app.cash.turbine.test
+import com.adsama.domain.DispatcherProvider
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
@@ -8,6 +9,7 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -17,12 +19,19 @@ import org.junit.Test
 class LocalWeatherDataSourceImplTest {
 
     private lateinit var dao: WeatherLocationDAO
+    private lateinit var dispatcherProvider: DispatcherProvider
     private lateinit var dataSource: LocalWeatherDataSourceImpl
 
     @Before
     fun setUp() {
         dao = mockk()
-        dataSource = LocalWeatherDataSourceImpl(dao)
+        dispatcherProvider = mockk {
+            val testDispatcher = UnconfinedTestDispatcher()
+            every { io } returns testDispatcher
+            every { main } returns testDispatcher
+            every { default } returns testDispatcher
+        }
+        dataSource = LocalWeatherDataSourceImpl(dao, dispatcherProvider)
     }
 
     private val mockEntity = PersistedWeatherModel(
@@ -149,7 +158,7 @@ class LocalWeatherDataSourceImplTest {
 
         val result1 = dataSource.fetchForecast("invalid, coordinates")
         val result2 = dataSource.fetchForecast("51.5, not_a_number")
-        val result3 = dataSource.fetchForecast("51.5") 
+        val result3 = dataSource.fetchForecast("51.5")
 
         assertTrue(result1 is Result.Error)
         assertTrue(result2 is Result.Error)
@@ -167,10 +176,19 @@ class LocalWeatherDataSourceImplTest {
     }
 
     @Test
-    fun `deleteLocation should return Error when DAO fails`() = runTest {
-        coEvery { dao.deleteLocationInfo(any()) } throws Exception("Delete failed")
+    fun `deleteLocation should return Success when DAO succeeds`() = runTest {
+        coEvery { dao.deleteLocationById(any()) } returns Unit
 
-        val result = dataSource.deleteLocation(mockDomainLocation)
+        val result = dataSource.deleteLocation(1L)
+
+        assertTrue(result is Result.Success)
+    }
+
+    @Test
+    fun `deleteLocation should return Error when DAO fails`() = runTest {
+        coEvery { dao.deleteLocationById(any()) } throws Exception("Delete failed")
+
+        val result = dataSource.deleteLocation(1L)
 
         assertTrue(result is Result.Error)
         assertEquals("Delete failed", (result as Result.Error).error.message)

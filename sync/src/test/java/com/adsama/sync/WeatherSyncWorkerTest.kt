@@ -58,7 +58,7 @@ class WeatherSyncWorkerTest {
             WeatherLocation(1, "London", "", "", 0.0, 0.0)
         )
         every { weatherDataSource.getAllSavedLocations() } returns flowOf(Result.Success(locations))
-        coEvery { weatherDataSource.getForecast(any(), any()) } returns Result.Success(mockk())
+        coEvery { weatherDataSource.getForecast(any()) } returns Result.Success(mockk())
 
         val worker = TestListenableWorkerBuilder<WeatherSyncWorker>(context)
             .setWorkerFactory(object : androidx.work.WorkerFactory() {
@@ -82,7 +82,7 @@ class WeatherSyncWorkerTest {
 
         // Then
         assertEquals(ListenableWorker.Result.success(), result)
-        coVerify(exactly = 1) { weatherDataSource.getForecast("London", forceRefresh = true) }
+        coVerify(exactly = 1) { weatherDataSource.getForecast("London") }
     }
 
     @Test

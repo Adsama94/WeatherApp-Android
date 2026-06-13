@@ -7,14 +7,12 @@ import com.adsama.domain.DeleteLocationUseCase
 import com.adsama.domain.FetchCurrentLocationUseCase
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
-import com.adsama.domain.SaveLocationUseCase
 import com.adsama.domain.SearchLocationUseCase
 import com.adsama.domain.WeatherConstants
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
 import com.adsama.weatherapp.ui.mapper.toUiModel
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,9 +21,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -40,9 +35,7 @@ class WeatherHomeViewModel @Inject constructor(
     private val getSavedLocationUseCase: FetchSaveLocationUseCase,
     private val deleteLocationUseCase: DeleteLocationUseCase,
     private val fetchCurrentWeatherUseCase: FetchCurrentWeatherUseCase,
-    private val saveLocationUseCase: SaveLocationUseCase,
     private val fetchCurrentLocationUseCase: FetchCurrentLocationUseCase,
-    private val dispatcherProvider: com.adsama.domain.DispatcherProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
@@ -52,6 +45,7 @@ class WeatherHomeViewModel @Inject constructor(
     val locationEvent: SharedFlow<String> = _locationEvent.asSharedFlow()
 
     private val refreshedLocationIds = mutableSetOf<Long>()
+    private var lastSavedLocations: List<WeatherLocation> = emptyList()
 
     init {
         observeSavedLocations()
@@ -59,11 +53,11 @@ class WeatherHomeViewModel @Inject constructor(
 
     private fun observeSavedLocations() {
         getSavedLocationUseCase(Unit)
-            .debounce(250)
             .onEach { result ->
                 when (result) {
                     is Result.Loading -> _uiState.update { it.copy(isLocalDataLoading = true) }
                     is Result.Success -> {
+                        lastSavedLocations = result.data
                         _uiState.update { state ->
                             state.copy(
                                 isLocalDataLoading = false,
@@ -91,35 +85,19 @@ class WeatherHomeViewModel @Inject constructor(
                         }
                     }
                 }
-            }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
     }
 
     fun refreshAllLocations(force: Boolean = false) {
-        val currentState = _uiState.value
-        if (currentState.savedLocations.isEmpty()) return
+        if (lastSavedLocations.isEmpty()) return
 
-        viewModelScope.launch(dispatcherProvider.io) {
+        viewModelScope.launch {
             val currentTime = System.currentTimeMillis()
-
-            // We'll observe the results via observeSavedLocations, 
-            // but we trigger the refreshes here.
-            currentState.savedLocations.forEach { locationUi ->
-                // To get lastUpdatedEpoch, we need the original domain models.
-                // However, we can just call the repository/usecase again or
-                // just rely on the fact that refreshWeatherForLocation handles it.
-                // Let's find the location in our internal list if we had one, 
-                // but the UI only has UI models.
-            }
-
-            // Re-fetching saved locations to get domain models with timestamps
-            val result = getSavedLocationUseCase(Unit).first()
-            if (result is Result.Success) {
-                result.data.forEach { location ->
-                    val shouldRefresh =
-                        force || (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
-                    if (shouldRefresh) {
-                        refreshWeatherForLocation(location)
-                    }
+            lastSavedLocations.forEach { location ->
+                val shouldRefresh =
+                    force || (currentTime - location.lastUpdatedEpoch > WeatherConstants.REFRESH_THRESHOLD_MS)
+                if (shouldRefresh) {
+                    refreshWeatherForLocation(location)
                 }
             }
         }
@@ -146,24 +124,14 @@ class WeatherHomeViewModel @Inject constructor(
                     _uiState.update { it.copy(isSearchLoading = false, error = result.error) }
                 }
             }
-        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
+        }.launchIn(viewModelScope)
     }
 
     fun removeLocationFromSaved(locationId: Long) {
-        viewModelScope.launch(dispatcherProvider.io) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isLocalDataLoading = true) }
 
-            // Temporary reconstruction for deletion logic
-            val mockLocation = WeatherLocation(
-                id = locationId,
-                name = "",
-                region = "",
-                country = "",
-                latitude = 0.0,
-                longitude = 0.0
-            )
-
-            deleteLocationUseCase(mockLocation).onEach { result ->
+            deleteLocationUseCase(locationId).onEach { result ->
                 when (result) {
                     is Result.Success -> {
                         refreshedLocationIds.remove(locationId)
@@ -190,7 +158,7 @@ class WeatherHomeViewModel @Inject constructor(
     }
 
     fun fetchLocation() {
-        viewModelScope.launch(dispatcherProvider.io) {
+        viewModelScope.launch {
             _uiState.update { it.copy(isSearchLoading = true) }
             when (val result = fetchCurrentLocationUseCase()) {
                 is Result.Success -> {
@@ -234,6 +202,6 @@ class WeatherHomeViewModel @Inject constructor(
                     }
                 }
             }
-        }.flowOn(dispatcherProvider.io).launchIn(viewModelScope)
+        }.launchIn(viewModelScope)
     }
 }
