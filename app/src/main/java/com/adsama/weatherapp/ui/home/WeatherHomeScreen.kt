@@ -41,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -223,7 +224,8 @@ private fun WeatherSearchBarSection(
         DockedSearchBar(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .fillMaxWidth(),
+                .fillMaxWidth()
+                .testTag("search_bar"),
             inputField = {
                 SearchBarDefaults.InputField(
                     modifier = Modifier.fillMaxWidth(),
@@ -292,7 +294,8 @@ private fun WeatherSavedLocationsSection(
                 state = rememberLazyListState(),
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 10.dp),
+                    .padding(top = 10.dp)
+                    .testTag("saved_locations_list"),
                 contentPadding = PaddingValues(vertical = 10.dp)
             ) {
                 items(
@@ -372,7 +375,8 @@ fun SavedLocationItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .clickable(onClick = clickAction),
+            .clickable(onClick = clickAction)
+            .testTag("saved_location_item_${location.id}"),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface

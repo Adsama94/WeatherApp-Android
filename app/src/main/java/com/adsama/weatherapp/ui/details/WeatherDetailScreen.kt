@@ -34,6 +34,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -90,7 +91,10 @@ fun WeatherDetailScreen(
             TopAppBar(
                 title = { Text(text = uiState.weather?.locationName ?: "") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.testTag("back_button")
+                    ) {
                         Icon(
                             painter = painterResource(R.drawable.arrow_back),
                             contentDescription = "Back"
@@ -99,10 +103,13 @@ fun WeatherDetailScreen(
                 },
                 actions = {
                     if (uiState.weather != null) {
-                        IconButton(onClick = {
-                            if (uiState.isPersisted) onRemoveLocation()
-                            else onSaveLocation()
-                        }) {
+                        IconButton(
+                            onClick = {
+                                if (uiState.isPersisted) onRemoveLocation()
+                                else onSaveLocation()
+                            },
+                            modifier = Modifier.testTag("bookmark_button")
+                        ) {
                             Icon(
                                 painter = painterResource(
                                     if (uiState.isPersisted) R.drawable.bookmark_remove

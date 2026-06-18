@@ -4,6 +4,9 @@ import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.LargeTest
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Direction
+import androidx.test.uiautomator.Until
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,21 +51,47 @@ class BaselineProfileGenerator {
             // See: https://d.android.com/topic/performance/baselineprofiles/dex-layout-optimizations
             includeInStartupProfile = true
         ) {
-            // This block defines the app's critical user journey. Here we are interested in
-            // optimizing for app startup. But you can also navigate and scroll through your most important UI.
-
             // Start default activity for your app
             pressHome()
             startActivityAndWait()
 
-            // TODO Write more interactions to optimize advanced journeys of your app.
-            // For example:
-            // 1. Wait until the content is asynchronously loaded
-            // 2. Scroll the feed content
-            // 3. Navigate to detail screen
+            // 1. Interact with the search bar
+            device.wait(Until.hasObject(By.res("search_bar")), 5000)
+            val searchBar = device.findObject(By.res("search_bar"))
+            searchBar?.click()
+            
+            // Type a common location (find the input field inside the search bar)
+            // For Material3 SearchBar, the input field text can be set directly on the SearchBar object in UI Automator sometimes,
+            // or we find the focused element.
+            device.waitForIdle()
+            device.findObject(By.focused(true))?.text = "London"
+            device.waitForIdle()
 
-            // Check UiAutomator documentation for more information how to interact with the app.
-            // https://d.android.com/training/testing/other-components/ui-automator
+            // 2. Wait for suggestions and click one
+            device.wait(Until.hasObject(By.textContains("London")), 5000)
+            val suggestion = device.findObject(By.textContains("London"))
+            suggestion?.click()
+
+            // 3. We should now be on the detail screen. Wait for weather data to load.
+            val detailHeader = "5-day forecast"
+            device.wait(Until.hasObject(By.text(detailHeader)), 5000)
+            
+            // 4. Scroll through the detail screen
+            val scrollable = device.findObject(By.scrollable(true))
+            scrollable?.setGestureMargin(device.displayWidth / 4)
+            scrollable?.fling(Direction.DOWN)
+            device.waitForIdle()
+
+            // 5. Go back to home
+            val backButton = device.findObject(By.res("back_button"))
+            backButton?.click()
+            device.waitForIdle()
+            
+            // 6. Scroll the home screen
+            device.wait(Until.hasObject(By.res("search_bar")), 5000)
+            val savedLocationsList = device.findObject(By.res("saved_locations_list"))
+            savedLocationsList?.fling(Direction.DOWN)
+            device.waitForIdle()
         }
     }
 }
