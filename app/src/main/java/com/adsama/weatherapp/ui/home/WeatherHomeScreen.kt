@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
@@ -51,11 +50,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import coil.compose.AsyncImage
 import com.adsama.weatherapp.R
 import com.adsama.weatherapp.ui.components.ThemeDropDownMenu
 import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
 import com.adsama.weatherapp.ui.theme.WeatherAppTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 @Composable
 fun WeatherHomeScreen(
@@ -66,6 +72,8 @@ fun WeatherHomeScreen(
     onToggleTheme: () -> Unit
 ) {
     val homeUiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
 
     val onLocationClickInternal = remember(viewModel, onLocationClick) {
         { locationName: String ->
@@ -83,6 +91,9 @@ fun WeatherHomeScreen(
 
     WeatherHomeScreen(
         uiState = homeUiState,
+        isRefreshing = isRefreshing,
+        searchQuery = searchQuery,
+        savedLocationsFlow = viewModel.savedLocationsPaging,
         isDarkMode = isDarkMode,
         onToggleTheme = onToggleTheme,
         onSearchQueryChange = viewModel::searchLocation,
@@ -96,6 +107,9 @@ fun WeatherHomeScreen(
 @Composable
 fun WeatherHomeScreen(
     uiState: HomeUiState,
+    isRefreshing: Boolean,
+    searchQuery: String,
+    savedLocationsFlow: Flow<PagingData<WeatherLocationUiModel>>,
     isDarkMode: Boolean,
     onToggleTheme: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -114,7 +128,12 @@ fun WeatherHomeScreen(
     }
 
     WeatherHomeContent(
-        uiState = uiState,
+        searchQuery = searchQuery,
+        isSearchActive = uiState.isSearchActive,
+        isSearchLoading = uiState.isSearchLoading,
+        searchSuggestions = uiState.searchSuggestions,
+        isRefreshing = isRefreshing,
+        savedLocationsFlow = savedLocationsFlow,
         isDarkMode = isDarkMode,
         onToggleTheme = onToggleTheme,
         onSearchQueryChange = onSearchQueryChange,
@@ -128,7 +147,12 @@ fun WeatherHomeScreen(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun WeatherHomeContent(
-    uiState: HomeUiState,
+    searchQuery: String,
+    isSearchActive: Boolean,
+    isSearchLoading: Boolean,
+    searchSuggestions: List<WeatherLocationUiModel>,
+    isRefreshing: Boolean,
+    savedLocationsFlow: Flow<PagingData<WeatherLocationUiModel>>,
     isDarkMode: Boolean,
     onToggleTheme: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
@@ -155,22 +179,18 @@ fun WeatherHomeContent(
             Spacer(modifier = Modifier.height(20.dp))
 
             WeatherSearchBarSection(
-                query = uiState.searchQuery,
+                query = searchQuery,
                 onQueryChange = onSearchQueryChange,
-                isActive = uiState.isSearchActive,
+                isActive = isSearchActive,
                 onActiveChange = onSearchActiveChange,
-                suggestions = uiState.searchSuggestions,
+                suggestions = searchSuggestions,
                 onLocationClick = onLocationClick,
                 onCurrentLocationClick = onCurrentLocationClick
             )
 
-            val isRefreshingInternal = remember(uiState.refreshingLocationIds, uiState.isLocalDataLoading) {
-                uiState.refreshingLocationIds.isNotEmpty() || uiState.isLocalDataLoading
-            }
-
             WeatherSavedLocationsSection(
-                savedLocations = uiState.savedLocations,
-                isLocalDataLoading = isRefreshingInternal,
+                savedLocationsFlow = savedLocationsFlow,
+                isLocalDataLoading = isRefreshing,
                 onRefresh = onRefresh,
                 onLocationClick = onLocationClick
             )
@@ -277,17 +297,19 @@ private fun WeatherSearchBarSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WeatherSavedLocationsSection(
-    savedLocations: List<WeatherLocationUiModel>,
+    savedLocationsFlow: Flow<PagingData<WeatherLocationUiModel>>,
     isLocalDataLoading: Boolean,
     onRefresh: () -> Unit,
     onLocationClick: (String) -> Unit
 ) {
+    val savedLocations = savedLocationsFlow.collectAsLazyPagingItems()
+
     PullToRefreshBox(
         isRefreshing = isLocalDataLoading,
         onRefresh = onRefresh,
         modifier = Modifier.fillMaxSize()
     ) {
-        if (savedLocations.isEmpty()) {
+        if (savedLocations.itemCount == 0 && savedLocations.loadState.refresh is LoadState.NotLoading) {
             WeatherHomeEmptyScreen(modifier = Modifier.align(Alignment.Center))
         } else {
             LazyColumn(
@@ -299,14 +321,17 @@ private fun WeatherSavedLocationsSection(
                 contentPadding = PaddingValues(vertical = 10.dp)
             ) {
                 items(
-                    items = savedLocations,
-                    key = { it.id },
-                    contentType = { "saved_location" }
-                ) { location ->
-                    SavedLocationItem(
-                        location = location,
-                        onLocationClick = onLocationClick
-                    )
+                    count = savedLocations.itemCount,
+                    key = savedLocations.itemKey { it.id },
+                    contentType = savedLocations.itemContentType { "saved_location" }
+                ) { index ->
+                    val location = savedLocations[index]
+                    if (location != null) {
+                        SavedLocationItem(
+                            location = location,
+                            onLocationClick = onLocationClick
+                        )
+                    }
                 }
             }
         }
@@ -446,10 +471,31 @@ fun WeatherHomeEmptyScreen(modifier: Modifier = Modifier) {
 @Preview(showBackground = false)
 @Composable
 fun WeatherHomeScreenPreview() {
+    val mockPagingData = PagingData.from(
+        listOf(
+            WeatherLocationUiModel(
+                id = 1L,
+                name = "New York",
+                region = "NY",
+                country = "USA",
+                temperature = "25°C",
+                conditionText = "Sunny",
+                conditionIcon = ""
+            ),
+            WeatherLocationUiModel(
+                id = 2L,
+                name = "Newark",
+                region = "NJ",
+                country = "USA",
+                temperature = "22°C",
+                conditionText = "Cloudy",
+                conditionIcon = ""
+            )
+        )
+    )
     WeatherAppTheme(darkTheme = true) {
         WeatherHomeScreen(
             uiState = HomeUiState(
-                searchQuery = "New York",
                 isSearchActive = true,
                 searchSuggestions = listOf(
                     WeatherLocationUiModel(
@@ -460,21 +506,13 @@ fun WeatherHomeScreenPreview() {
                         temperature = "25°C",
                         conditionText = "Sunny",
                         conditionIcon = ""
-                    ),
-                    WeatherLocationUiModel(
-                        id = 2L,
-                        name = "Newark",
-                        region = "NJ",
-                        country = "USA",
-                        temperature = "22°C",
-                        conditionText = "Cloudy",
-                        conditionIcon = ""
                     )
                 ),
-                savedLocations = emptyList(),
-                refreshingLocationIds = emptySet(),
                 error = null
             ),
+            isRefreshing = false,
+            searchQuery = "New York",
+            savedLocationsFlow = flowOf(mockPagingData),
             isDarkMode = true,
             onToggleTheme = {},
             onSearchQueryChange = {},

@@ -1,5 +1,6 @@
 package com.adsama.database
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -13,8 +14,14 @@ interface WeatherLocationDAO {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLocationInfo(persistedWeatherModel: PersistedWeatherModel)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLocations(locations: List<PersistedWeatherModel>)
+
     @Query("SELECT * FROM `PersistedWeatherModel`")
     fun getAllSavedLocations(): Flow<List<PersistedWeatherModel>>
+
+    @Query("SELECT * FROM `PersistedWeatherModel`")
+    fun getPagingSavedLocations(): PagingSource<Int, PersistedWeatherModel>
 
     @Query("SELECT * FROM `PersistedWeatherModel`")
     suspend fun getAllSavedLocationsOnce(): List<PersistedWeatherModel>

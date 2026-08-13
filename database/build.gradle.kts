@@ -33,6 +33,9 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.room.paging)
+    implementation(libs.androidx.paging.common)
+    implementation(libs.androidx.paging.runtime)
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.dagger.hilt.android)

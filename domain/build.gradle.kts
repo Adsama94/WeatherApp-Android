@@ -12,6 +12,7 @@ dependencies {
     implementation(libs.javax.inject)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.androidx.paging.common)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

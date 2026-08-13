@@ -5,10 +5,10 @@ import kotlinx.coroutines.flow.flow
 import java.io.IOException
 import kotlin.coroutines.cancellation.CancellationException
 
-sealed class Result<out T> {
-    data class Loading<T>(val data: T? = null) : Result<T>()
-    data class Success<T>(val data: T) : Result<T>()
-    data class Error<T>(val error: DomainError, val data: T? = null) : Result<T>()
+sealed interface Result<out T> {
+    data class Loading<T>(val data: T? = null) : Result<T>
+    data class Success<T>(val data: T) : Result<T>
+    data class Error<T>(val error: DomainError, val data: T? = null) : Result<T>
 }
 
 abstract class ResultFlowUseCase<in P, R> {

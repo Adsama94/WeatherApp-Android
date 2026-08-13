@@ -4,8 +4,10 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.paging.PagingData
 import com.adsama.weatherapp.ui.model.WeatherLocationUiModel
 import com.adsama.weatherapp.ui.theme.WeatherAppTheme
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
 
@@ -27,9 +29,15 @@ class WeatherHomeScreenTest {
     @Test
     fun appName_is_displayed_in_top_bar() {
         composeTestRule.setContent {
+            val savedLocationsFlow = flowOf(PagingData.empty<WeatherLocationUiModel>())
             WeatherAppTheme {
                 WeatherHomeContent(
-                    uiState = HomeUiState(),
+                    searchQuery = "",
+                    isSearchActive = false,
+                    isSearchLoading = false,
+                    searchSuggestions = emptyList(),
+                    isRefreshing = false,
+                    savedLocationsFlow = savedLocationsFlow,
                     isDarkMode = false,
                     onToggleTheme = {},
                     onSearchQueryChange = {},
@@ -47,9 +55,15 @@ class WeatherHomeScreenTest {
     @Test
     fun empty_state_is_shown_when_no_saved_locations() {
         composeTestRule.setContent {
+            val savedLocationsFlow = flowOf(PagingData.empty<WeatherLocationUiModel>())
             WeatherAppTheme {
                 WeatherHomeContent(
-                    uiState = HomeUiState(savedLocations = emptyList()),
+                    searchQuery = "",
+                    isSearchActive = false,
+                    isSearchLoading = false,
+                    searchSuggestions = emptyList(),
+                    isRefreshing = false,
+                    savedLocationsFlow = savedLocationsFlow,
                     isDarkMode = false,
                     onToggleTheme = {},
                     onSearchQueryChange = {},
@@ -61,18 +75,21 @@ class WeatherHomeScreenTest {
             }
         }
 
-        // The empty hint text from strings.xml (manually checking the text from previous read)
-        // From read: stringResource(R.string.textview_empty_hint)
-        // I'll use a substring that's likely in the hint.
         composeTestRule.onNodeWithText("Search for a city", substring = true).assertIsDisplayed()
     }
 
     @Test
     fun saved_locations_are_displayed() {
         composeTestRule.setContent {
+            val savedLocationsFlow = flowOf(PagingData.from(listOf(mockLocation)))
             WeatherAppTheme {
                 WeatherHomeContent(
-                    uiState = HomeUiState(savedLocations = listOf(mockLocation)),
+                    searchQuery = "",
+                    isSearchActive = false,
+                    isSearchLoading = false,
+                    searchSuggestions = emptyList(),
+                    isRefreshing = false,
+                    savedLocationsFlow = savedLocationsFlow,
                     isDarkMode = false,
                     onToggleTheme = {},
                     onSearchQueryChange = {},
@@ -93,9 +110,15 @@ class WeatherHomeScreenTest {
     fun clicking_saved_location_triggers_callback() {
         var clickedLocation: String? = null
         composeTestRule.setContent {
+            val savedLocationsFlow = flowOf(PagingData.from(listOf(mockLocation)))
             WeatherAppTheme {
                 WeatherHomeContent(
-                    uiState = HomeUiState(savedLocations = listOf(mockLocation)),
+                    searchQuery = "",
+                    isSearchActive = false,
+                    isSearchLoading = false,
+                    searchSuggestions = emptyList(),
+                    isRefreshing = false,
+                    savedLocationsFlow = savedLocationsFlow,
                     isDarkMode = false,
                     onToggleTheme = {},
                     onSearchQueryChange = {},
@@ -114,12 +137,15 @@ class WeatherHomeScreenTest {
     @Test
     fun search_suggestions_are_displayed_when_active() {
         composeTestRule.setContent {
+            val savedLocationsFlow = flowOf(PagingData.empty<WeatherLocationUiModel>())
             WeatherAppTheme {
                 WeatherHomeContent(
-                    uiState = HomeUiState(
-                        isSearchActive = true,
-                        searchSuggestions = listOf(mockLocation)
-                    ),
+                    searchQuery = "",
+                    isSearchActive = true,
+                    isSearchLoading = false,
+                    searchSuggestions = listOf(mockLocation),
+                    isRefreshing = false,
+                    savedLocationsFlow = savedLocationsFlow,
                     isDarkMode = false,
                     onToggleTheme = {},
                     onSearchQueryChange = {},

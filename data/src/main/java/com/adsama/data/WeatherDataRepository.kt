@@ -8,6 +8,8 @@ import com.adsama.domain.WeatherDataSource
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
 import com.adsama.domain.model.WeatherReport
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -69,9 +71,18 @@ class WeatherDataRepository @Inject constructor(
         return localWeatherDataSource.fetchSavedLocations()
     }
 
+    override fun getPagingSavedLocations(config: PagingConfig): Flow<PagingData<WeatherLocation>> {
+        return localWeatherDataSource.getPagingSavedLocations(config)
+    }
+
     override suspend fun saveLocation(location: WeatherLocation): Result<Unit> =
         withContext(dispatcherProvider.io) {
             localWeatherDataSource.saveLocation(location)
+        }
+
+    override suspend fun saveLocations(locations: List<WeatherLocation>): Result<Unit> =
+        withContext(dispatcherProvider.io) {
+            localWeatherDataSource.saveLocations(locations)
         }
 
     override suspend fun deleteLocation(locationId: Long): Result<Unit> =

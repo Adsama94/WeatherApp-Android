@@ -5,9 +5,13 @@ import com.adsama.domain.LocalWeatherDataSource
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.map as flowMap
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -20,7 +24,7 @@ class LocalWeatherDataSourceImpl @Inject constructor(
 
     override fun fetchSavedLocations(): Flow<Result<List<WeatherLocation>>> {
         return weatherLocationDAO.getAllSavedLocations()
-            .map { list ->
+            .flowMap { list ->
                 Result.Success(list.map { it.toDomain() }) as Result<List<WeatherLocation>>
             }
             .onStart { emit(Result.Loading<List<WeatherLocation>>()) }
@@ -35,9 +39,24 @@ class LocalWeatherDataSourceImpl @Inject constructor(
             }
     }
 
+    override fun getPagingSavedLocations(config: PagingConfig): Flow<PagingData<WeatherLocation>> {
+        return Pager(
+            config = config,
+            pagingSourceFactory = { weatherLocationDAO.getPagingSavedLocations() }
+        ).flow.flowMap { pagingData ->
+            pagingData.map { it.toDomain() }
+        }
+    }
+
     override suspend fun saveLocation(location: WeatherLocation): Result<Unit> =
         withContext(dispatcherProvider.io) {
             weatherLocationDAO.insertLocationInfo(location.toEntity())
+            Result.Success(Unit)
+        }
+
+    override suspend fun saveLocations(locations: List<WeatherLocation>): Result<Unit> =
+        withContext(dispatcherProvider.io) {
+            weatherLocationDAO.insertLocations(locations.map { it.toEntity() })
             Result.Success(Unit)
         }
 

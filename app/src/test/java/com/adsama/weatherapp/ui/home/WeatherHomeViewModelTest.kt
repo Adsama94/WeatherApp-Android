@@ -2,10 +2,13 @@ package com.adsama.weatherapp.ui.home
 
 import app.cash.turbine.test
 import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.DispatcherProvider
 import com.adsama.domain.FetchCurrentLocationUseCase
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
+import com.adsama.domain.FetchSavedLocationsPagingUseCase
 import com.adsama.domain.SearchLocationUseCase
+import com.adsama.domain.WeatherDataSource
 import com.adsama.domain.model.DomainError
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
@@ -33,53 +36,42 @@ class WeatherHomeViewModelTest {
 
     private val searchLocationUseCase = mockk<SearchLocationUseCase>(relaxed = true)
     private val getSavedLocationUseCase = mockk<FetchSaveLocationUseCase>(relaxed = true)
+    private val getSavedLocationsPagingUseCase = mockk<FetchSavedLocationsPagingUseCase>(relaxed = true)
     private val deleteLocationUseCase = mockk<DeleteLocationUseCase>(relaxed = true)
     private val fetchCurrentWeatherUseCase = mockk<FetchCurrentWeatherUseCase>(relaxed = true)
     private val fetchCurrentLocationUseCase = mockk<FetchCurrentLocationUseCase>(relaxed = true)
+    private val weatherDataSource = mockk<WeatherDataSource>(relaxed = true)
+
+    private val testDispatcher = StandardTestDispatcher()
+    private val dispatcherProvider = object : DispatcherProvider {
+        override val main = testDispatcher
+        override val io = testDispatcher
+        override val default = testDispatcher
+    }
 
     private lateinit var viewModel: WeatherHomeViewModel
-    private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         every { getSavedLocationUseCase(Unit) } returns flowOf(Result.Success(emptyList()))
+        every { getSavedLocationsPagingUseCase(any()) } returns flowOf()
 
         viewModel = WeatherHomeViewModel(
             searchLocationUseCase,
             getSavedLocationUseCase,
+            getSavedLocationsPagingUseCase,
             deleteLocationUseCase,
             fetchCurrentWeatherUseCase,
-            fetchCurrentLocationUseCase
+            fetchCurrentLocationUseCase,
+            weatherDataSource,
+            dispatcherProvider
         )
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
-    }
-
-    @Test
-    fun `init should observe saved locations`() = runTest {
-        val locations = listOf(
-            WeatherLocation(1, "London", "", "", 0.0, 0.0, lastUpdatedEpoch = 0L)
-        )
-        every { getSavedLocationUseCase(Unit) } returns flowOf(Result.Success(locations))
-
-        viewModel = WeatherHomeViewModel(
-            searchLocationUseCase,
-            getSavedLocationUseCase,
-            deleteLocationUseCase,
-            fetchCurrentWeatherUseCase,
-            fetchCurrentLocationUseCase
-        )
-
-        advanceTimeBy(300.milliseconds)
-        runCurrent()
-
-        val state = viewModel.uiState.value
-        assertEquals(1, state.savedLocations.size)
-        assertEquals("London", state.savedLocations[0].name)
     }
 
     @Test
