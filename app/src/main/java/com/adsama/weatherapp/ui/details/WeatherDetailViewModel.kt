@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adsama.domain.DeleteLocationUseCase
+import com.adsama.domain.DispatcherProvider
 import com.adsama.domain.FetchCurrentWeatherUseCase
 import com.adsama.domain.FetchSaveLocationUseCase
 import com.adsama.domain.SaveLocationUseCase
@@ -16,10 +17,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,6 +32,7 @@ class WeatherDetailViewModel @Inject constructor(
     private val getSavedLocationUseCase: FetchSaveLocationUseCase,
     private val saveLocationUseCase: SaveLocationUseCase,
     private val deleteLocationUseCase: DeleteLocationUseCase,
+    private val dispatcherProvider: DispatcherProvider,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DetailUiState())
@@ -42,16 +46,18 @@ class WeatherDetailViewModel @Inject constructor(
     }
 
     private fun observeSavedLocations() {
-        getSavedLocationUseCase(Unit).onEach { result ->
-            when (result) {
-                is Result.Success -> {
-                    savedLocations = result.data
-                    checkIfLocationIsSaved()
-                }
+        getSavedLocationUseCase(Unit)
+            .flowOn(dispatcherProvider.default)
+            .onEach { result ->
+                when (result) {
+                    is Result.Success -> {
+                        savedLocations = result.data
+                        checkIfLocationIsSaved()
+                    }
 
-                else -> {}
-            }
-        }.launchIn(viewModelScope)
+                    else -> {}
+                }
+            }.launchIn(viewModelScope)
     }
 
     fun getForecastData(location: String) {
@@ -65,9 +71,12 @@ class WeatherDetailViewModel @Inject constructor(
                 is Result.Loading -> _uiState.update { it.copy(isLoading = true) }
                 is Result.Success -> {
                     currentReport = result.data
+                    val uiModel = withContext(dispatcherProvider.default) {
+                        result.data.toDetailUiModel()
+                    }
                     _uiState.update {
                         it.copy(
-                            weather = result.data.toDetailUiModel(),
+                            weather = uiModel,
                             isLoading = false
                         )
                     }

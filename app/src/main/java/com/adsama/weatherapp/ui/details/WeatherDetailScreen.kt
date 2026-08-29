@@ -32,6 +32,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -341,6 +342,12 @@ fun TelemetryCard(
 
 @Composable
 fun HourlySection(condition: String, hourly: List<HourlyForecastUiModel>) {
+    val filteredHourly = remember(hourly) {
+        val currentTimeEpoch = (System.currentTimeMillis() / 1000).toInt()
+        val next12HoursEpoch = currentTimeEpoch + (12 * 3600) // 12 hours in seconds
+        hourly.filter { it.timeEpoch in currentTimeEpoch..next12HoursEpoch }
+    }
+
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -358,17 +365,13 @@ fun HourlySection(condition: String, hourly: List<HourlyForecastUiModel>) {
                 modifier = Modifier.padding(vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
-            val currentTimeEpoch = (System.currentTimeMillis() / 1000).toInt()
-            val next12HoursEpoch = currentTimeEpoch + (12 * 3600) // 12 hours in seconds
-            val filteredHourly =
-                hourly.filter { it.timeEpoch in currentTimeEpoch..next12HoursEpoch }
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(
                     items = filteredHourly,
-                    key = { it.timeEpoch },
+                    key = { hourModel: HourlyForecastUiModel -> hourModel.timeEpoch },
                     contentType = { "hourly_forecast" }
                 ) { hour ->
                     HourlyItem(hour)

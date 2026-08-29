@@ -1,10 +1,10 @@
 package com.adsama.domain
 
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.adsama.domain.model.Result
 import com.adsama.domain.model.WeatherLocation
 import com.adsama.domain.model.WeatherReport
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 
 interface LocalWeatherDataSource {
